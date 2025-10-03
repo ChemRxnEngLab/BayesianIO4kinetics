@@ -1,0 +1,14 @@
+JAX version: 0.7.2
+Devices: [CudaDevice(id=0)]
+
+======================== JOB EFFICIENCY REPORT ========================
+Job ID: 18800011
+Cluster: justus2
+User/Group: ul_qmj36/ul_cheming
+State: COMPLETED (exit code 0)
+Cores: 1
+CPU Utilized: 00:00:03
+CPU Efficiency: 6.98% of 00:00:43 core-walltime
+Job Wall-clock time: 00:00:43
+Memory Utilized: 83.98 MB
+Memory Efficiency: 1.03% of 8.00 GB
