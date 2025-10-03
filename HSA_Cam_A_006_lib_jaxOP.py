@@ -100,9 +100,10 @@ def _forward_solve(y0, t, theta):
 
     # Set up solver - Tsit5 is a high-order Runge-Kutta method
     solver = dfx.Tsit5()
+    # solver = dfx.ImplicitEuler()
 
     # Define step size controller for adaptive stepping
-    stepsize_controller = dfx.PIDController(rtol=1e-6, atol=1e-8)
+    stepsize_controller = dfx.PIDController(rtol=1e-4, atol=1e-6)
 
     # Solve the ODE system
     solution = dfx.diffeqsolve(
@@ -115,7 +116,8 @@ def _forward_solve(y0, t, theta):
         args=theta_jax,
         saveat=dfx.SaveAt(ts=t_jax),
         stepsize_controller=stepsize_controller,
-        max_steps=2**16,
+        adjoint=dfx.RecursiveCheckpointAdjoint(),
+        max_steps=2**18,
     )
 
     return solution.ys
