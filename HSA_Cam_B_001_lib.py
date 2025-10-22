@@ -236,11 +236,25 @@ def _ODE_func(t, y, params):
 
     V_lt = m2V(m_li)
     c_li = m2c(m_li)
+    c_li = jnp.clip(c_li, min=1e-12)
 
     # deactivation mechanism
-    r_deact = k_deact * jnp.exp((-EA_deact / R) * (1 / T - 1 / 293)) * a**n_deact
+    r_deact = jnp.where(
+        a <= 1e-3,
+        0.0,
+        k_deact * jnp.exp((-EA_deact / R) * (1 / T - 1 / 293)) * a**n_deact,
+    )
+
+    a = jnp.clip(a, a_min=0)
 
     s_i = a * jax_rxns.formation_rates(c_li, T).squeeze()
+
+    s_i = jnp.where(
+        jnp.logical_and(c_li <= 1e-12, s_i < 0),
+        0,
+        s_i,
+    )
+
     s_gli = jnp.zeros_like(s_i)
     s_sli = jnp.zeros_like(s_i)
 
@@ -273,33 +287,35 @@ vec_ODE_func = jax.vmap(ODE_func, in_axes=(None, 0, 0))
 
 
 def _forward_solve(y0, t, theta):
-    y0_jax = jnp.asarray(y0)
-    t_jax = jnp.asarray(t)
-    theta_jax = jnp.asarray(theta)
+    # y0_jax = jnp.asarray(y0)
+    # t_jax = jnp.asarray(t)
+    # theta_jax = jnp.asarray(theta)
 
     # Define ODE term for Diffrax
     ode_term = dfx.ODETerm(ODE_func)
 
     # Set up solver - Tsit5 is a high-order Runge-Kutta method
     solver = dfx.Tsit5()
-    # solver = dfx.ImplicitEuler()
+    # solver = dfx.Kvaerno4()
 
     # Define step size controller for adaptive stepping
-    stepsize_controller = dfx.PIDController(rtol=1e-10, atol=1e-12)
+    # stepsize_controller = dfx.PIDController(rtol=1e-6, atol=1e-8)
+    stepsize_controller = dfx.ConstantStepSize()
 
     # Solve the ODE system
     solution = dfx.diffeqsolve(
         ode_term,
         solver,
-        t0=t_jax[0],
-        t1=t_jax[-1],
-        dt0=None,  # Let Diffrax choose initial step size
-        y0=y0_jax,
-        args=theta_jax,
-        saveat=dfx.SaveAt(ts=t_jax),
+        t0=t[0],
+        t1=t[-1],
+        # dt0=None,  # Let Diffrax choose initial step size
+        dt0=1.0e-1,
+        y0=y0,
+        args=theta,
+        saveat=dfx.SaveAt(ts=t),
         stepsize_controller=stepsize_controller,
-        adjoint=dfx.RecursiveCheckpointAdjoint(),
-        max_steps=2**18,
+        adjoint=dfx.RecursiveCheckpointAdjoint(checkpoints=50),
+        max_steps=None,
     )
 
     return solution.ys
@@ -434,7 +450,8 @@ class SolOp(Op):
 
     def perform(self, node, inputs, outputs):
         y0, t, theta = inputs
-        result = _forward_solve(y0, t, theta)
+        # result = _forward_solve(y0, t, theta)
+        result = _jitted_forward_solve(y0, t, theta)
         outputs[0][0] = np.asarray(result)
 
     def grad(self, inputs, output_grads):
@@ -458,7 +475,8 @@ class VJPSolOp(Op):
 
     def perform(self, node, inputs, outputs):
         y0, t, theta, gz = inputs
-        vjp_y0, vjp_t, vjp_theta = _vjp_forward_solve(y0, t, theta, gz)
+        # vjp_y0, vjp_t, vjp_theta = _vjp_forward_solve(y0, t, theta, gz)
+        vjp_y0, vjp_t, vjp_theta = _jitted_vjp_forward_solve(y0, t, theta, gz)
         outputs[0][0] = np.asarray(vjp_y0)
         outputs[1][0] = np.asarray(vjp_t)
         outputs[2][0] = np.asarray(vjp_theta)
@@ -481,7 +499,8 @@ class VecSolOp(Op):
 
     def perform(self, node, inputs, outputs):
         y0_batch, t, params_batch = inputs
-        result = _vec_forward_solve(y0_batch, t, params_batch)
+        # result = _vec_forward_solve(y0_batch, t, params_batch)
+        result = _jitted_vec_forward_solve(y0_batch, t, params_batch)
         outputs[0][0] = np.asarray(result, dtype="float64")
 
     def grad(self, inputs, output_grads):
@@ -509,7 +528,10 @@ class VJPVecSolOp(Op):
 
     def perform(self, node, inputs, outputs):
         y0_batch, t, params_batch, gz = inputs
-        vjp_y0, vjp_t, vjp_params = _vjp_vec_forward_solve(
+        # vjp_y0, vjp_t, vjp_params = _vjp_vec_forward_solve(
+        #     y0_batch, t, params_batch, gz
+        # )
+        vjp_y0, vjp_t, vjp_params = _jitted_vjp_vec_forward_solve(
             y0_batch, t, params_batch, gz
         )
         outputs[0][0] = np.asarray(vjp_y0)

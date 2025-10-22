@@ -74,8 +74,8 @@ def main():
             random_seed=23489,
             return_inferencedata=True,
             # nuts_sampler="numpyro",
-            cores=8,
-            chains=8,
+            cores=2,
+            chains=2,
             progressbar=False,
             callbacks=[my_callback],
         )

@@ -23,7 +23,7 @@ def reaction(t, y, params):
     Parameters:
     -----------
     t : float
-        Time (not used in this autonomous system)
+        Time (not used in this autonomous system)()
     y : array-like
         State vector [n_g_con, c_Al, c_Bl, c_Cl, c_Dl]
     params : array-like
