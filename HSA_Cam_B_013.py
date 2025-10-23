@@ -1,3 +1,4 @@
+import functools
 import json
 from multiprocessing import Pool
 import argparse
@@ -33,20 +34,20 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--workers",
     type=int,
-    default=1,
+    default=4,
     help="Number of workers for parallel processing",
 )
 parser.add_argument(
     "--KLsamples",
     type=int,
-    default=16,
+    default=8,
     help="Number of hypothetical samples for KL divergence estimation",
 )
 parser.add_argument(
     "--iterations",
     type=int,
-    default=20,
-    help="Number of iterations for KL divergence estimation",
+    default=10,  # TODO
+    help="Number of points to additionally sample in the experiment",
 )
 
 
@@ -146,11 +147,17 @@ def plot_post_model_at_proposal(proposal, test_res, true_res, Ts):
         transform=ax.transAxes,
         fontsize=10,
     )
+    ax.set(
+        xlabel="$T$ / K",
+        ylabel=r"$r$ / mol s^{-1}",
+    )
     ax2 = ax.twinx()
+    ax2.set(
+        ylabel=r"$\delta_\mathrm{HDI}$ / mol s^{-1}",
+    )
     ax2.plot(
         Ts,
-        (np.percentile(test_res, 97.5, axis=1) - np.percentile(test_res, 2.5, axis=1))
-        / np.mean(test_res, axis=1),
+        (np.percentile(test_res, 97.5, axis=1) - np.percentile(test_res, 2.5, axis=1)),
         color="orange",
     )
 
@@ -383,18 +390,13 @@ def _single_kl_worker(args):
         np.asarray(y_augmented),
     )
     with model_new:
+        # accurate inference during KLD calc
         idata_new = pm.sample(
-            tune=100,  # TODO
-            draws=400,  # TODO
+            tune=1000,
+            draws=4000,
             progressbar=False,
             return_inferencedata=True,
         )
-        # approx = pm.fit(
-        #     n=50000,
-        #     method="advi",
-        #     progressbar=False,
-        # )
-        # idata_new = approx.sample(4000)
     klds_i = kl_divergence_between_models(
         idata_new,
         idata_old,
@@ -414,6 +416,19 @@ def _single_kl_worker(args):
         ],
     )
     return klds_i
+
+
+def _candidate_kl_worker(args):
+    """Top-level worker for parallelizing over candidate proposals."""
+    x_old, y_old, x_new, idata_old, n_hyp_samples, n_cores = args
+    return mp_KL_divergence(
+        x_old=x_old,
+        y_old=y_old,
+        x_new=x_new.squeeze(),
+        idata_old=idata_old,
+        n_hyp_samples=n_hyp_samples,
+        n_cores=n_cores,
+    )
 
 
 def mp_KL_divergence(
@@ -466,12 +481,170 @@ def mp_KL_divergence(
     return klds
 
 
+def sp_find_opt_candidate(
+    n_iterations,
+    proposals,
+    r_obs,
+    idata,
+    n_hyp_samples,
+    n_workers,
+    filename,
+):
+    client = Client()
+    parameters = [
+        RangeParameterConfig(
+            name="T",
+            parameter_type="float",
+            bounds=(500.0, 600.0),
+        ),
+        RangeParameterConfig(
+            name="p",
+            parameter_type="float",
+            bounds=(2.0, 20.0),
+        ),
+        RangeParameterConfig(
+            name="c2h",
+            parameter_type="float",
+            bounds=(0.5, 2.0),
+        ),
+        RangeParameterConfig(
+            name="f",
+            parameter_type="float",
+            bounds=(10.0, 1000.0),
+        ),
+        RangeParameterConfig(
+            name="c2i",
+            parameter_type="float",
+            bounds=(0.1, 1.0),
+        ),
+    ]
+    client.configure_experiment(
+        parameters=parameters,
+    )
+    client.configure_optimization(objective="KLD")
+    for _ in range(n_iterations):  # TODO
+        trials = client.get_next_trials(max_trials=1)
+        for trial_idx, parameters in trials.items():
+            candidate = jnp.array(
+                [
+                    parameters["T"],
+                    parameters["p"],
+                    parameters["c2h"],
+                    parameters["f"],
+                    parameters["c2i"],
+                ]
+            )
+            KLD_vals = mp_KL_divergence(
+                proposals,
+                r_obs,
+                candidate.squeeze(),
+                idata,
+                n_hyp_samples=n_hyp_samples,  # TODO
+                n_cores=n_workers,
+            )
+            mean_KLD = KLD_vals.sum(axis=1).mean(axis=0).item()
+            std_KLD = KLD_vals.sum(axis=1).std(axis=0).item()
+            client.complete_trial(
+                trial_index=trial_idx,
+                raw_data={"KLD": (mean_KLD, std_KLD)},
+            )
+            print(
+                f"Trial {trial_idx} at proposal {candidate.tolist()} has KLD {mean_KLD} ± {std_KLD}"
+            )
+    client.summarize()
+    client.save_to_json_file(filename)
+    best_parameters, expected_KLD, index, name = client.get_best_parameterization()
+    return best_parameters, expected_KLD, index, name
+
+
+def mp_find_opt_candidate(
+    n_iterations,
+    n_trials_per_iter,
+    proposals,
+    r_obs,
+    idata,
+    n_hyp_samples,
+    n_workers,
+    filename,
+):
+    client = Client()
+    parameters = [
+        RangeParameterConfig(
+            name="T",
+            parameter_type="float",
+            bounds=(500.0, 600.0),
+        ),
+        RangeParameterConfig(
+            name="p",
+            parameter_type="float",
+            bounds=(2.0, 20.0),
+        ),
+        RangeParameterConfig(
+            name="c2h",
+            parameter_type="float",
+            bounds=(0.5, 2.0),
+        ),
+        RangeParameterConfig(
+            name="f",
+            parameter_type="float",
+            bounds=(10.0, 1000.0),
+        ),
+        RangeParameterConfig(
+            name="c2i",
+            parameter_type="float",
+            bounds=(0.1, 1.0),
+        ),
+    ]
+    client.configure_experiment(
+        parameters=parameters,
+    )
+    client.configure_optimization(objective="KLD")
+    for _ in range(n_iterations):
+        trials = client.get_next_trials(max_trials=n_trials_per_iter)
+        candidates = []
+        indeces = []
+        for trial_idx, parameters in trials.items():
+            candidate = jnp.array(
+                [
+                    parameters["T"],
+                    parameters["p"],
+                    parameters["c2h"],
+                    parameters["f"],
+                    parameters["c2i"],
+                ]
+            )
+            candidates.append(candidate)
+            indeces.append(trial_idx)
+
+        # Prepare arguments for parallel execution
+        args_list = [
+            (proposals, r_obs, candidate, idata, n_hyp_samples, n_workers)
+            for candidate in candidates
+        ]
+
+        with NestablePool(len(candidates)) as pool:
+            results = pool.map(_candidate_kl_worker, args_list)
+
+        for trial_idx, KLD_vals in zip(indeces, results):
+            mean_KLD = KLD_vals.sum(axis=1).mean(axis=0).item()
+            std_KLD = KLD_vals.sum(axis=1).std(axis=0).item()
+            client.complete_trial(
+                trial_index=trial_idx,
+                raw_data={"KLD": (mean_KLD, std_KLD)},
+            )
+            print(f"Trial {trial_idx} has KLD {mean_KLD} ± {std_KLD}")
+    client.summarize()
+    client.save_to_json_file(filename)
+    best_parameters, expected_KLD, index, name = client.get_best_parameterization()
+    return best_parameters, expected_KLD, index, name
+
+
 def main(args):
     num_workers = args.workers
     n_hyp_samples = args.KLsamples
     n_iterations = args.iterations
 
-    proposals = np.array(
+    dummy_proposals = np.array(
         [
             [500.0, 4.0, 0.5, 1000.0, 0.5],
             [600.0, 4.0, 0.5, 1000.0, 0.5],
@@ -479,7 +652,7 @@ def main(args):
             [600.0, 20.0, 0.5, 1000.0, 0.5],
         ]
     )
-    T, p, c2h, f, c2i, r_obs = observe_at_proposal(proposals)
+    T, p, c2h, f, c2i, dummy_r_obs = observe_at_proposal(dummy_proposals)
     model = bmodel(
         (
             np.asarray(T),
@@ -488,15 +661,42 @@ def main(args):
             np.asarray(f),
             np.asarray(c2i),
         ),
-        np.asarray(r_obs),
+        np.asarray(dummy_r_obs),
     )
     with model:
-        idata = pm.sample_prior_predictive(samples=1000)
+        prior_idata = pm.sample_prior_predictive(samples=1000)
+
+    # workaround to pretend the prior samples are from the posterior to not having to rewrite the KLD func
+    prior_idata["posterior"] = prior_idata.prior
+    # Starting point for the optimization
+    # no prior proposals or obseravtions
+    empty_proposals = np.empty((0, 5))
+    empty_r_obs = np.empty((0, 1))
+    best_parameters, expected_KLD, index, name = mp_find_opt_candidate(
+        10,
+        3,
+        empty_proposals,
+        empty_r_obs,
+        prior_idata,
+        n_hyp_samples,
+        num_workers,
+        save_path / f"ax_client_000.json",
+    )
+    proposal = np.array(
+        [
+            best_parameters["T"],
+            best_parameters["p"],
+            best_parameters["c2h"],
+            best_parameters["f"],
+            best_parameters["c2i"],
+        ]
+    )
+    proposals = np.append(empty_proposals, np.atleast_2d(proposal), axis=0)
 
     trials_sum = []
 
-    for i in range(n_iterations):
-        print(f"Iteration {i+1}/{n_iterations}")
+    for i in range(1, n_iterations + 1):
+        print(f"Iteration {i}/{n_iterations+1}")
         T, p, c2h, f, c2i, r_obs = observe_at_proposal(proposals)
         model = bmodel(
             (
@@ -517,87 +717,36 @@ def main(args):
             },
         }
         with model:
-            idata = pm.sample(
-                tune=1000,
-                draws=4000,
-                chains=4,
-                target_accept=0.9,
-                return_inferencedata=True,
+            idata = pm.sample_prior_predictive(draws=1000)
+            idata.extend(
+                pm.sample(
+                    tune=1000,
+                    draws=4000,
+                    chains=4,
+                    target_accept=0.9,
+                    return_inferencedata=True,
+                )
             )
         idata.to_netcdf(save_path / f"trace_{i:03d}.nc")
         trial_sum.update(
             {
-                "trace_path": save_path / f"trace_{i:03d}.nc",
+                "trace_path": str(save_path / f"trace_{i:03d}.nc"),
             }
         )
         ### code to maximize the KLD goes here.
-        # This is the optimization client
-        client = Client()
 
-        parameters = [
-            RangeParameterConfig(
-                name="T",
-                parameter_type="float",
-                bounds=(500.0, 600.0),
-            ),
-            RangeParameterConfig(
-                name="p",
-                parameter_type="float",
-                bounds=(4.0, 20.0),
-            ),
-            RangeParameterConfig(
-                name="c2h",
-                parameter_type="float",
-                bounds=(0.1, 5.0),
-            ),
-            RangeParameterConfig(
-                name="f",
-                parameter_type="float",
-                bounds=(500.0, 2000.0),
-            ),
-            RangeParameterConfig(
-                name="c2i",
-                parameter_type="float",
-                bounds=(0.0, 1.0),
-            ),
-        ]
-
-        client.configure_experiment(
-            parameters=parameters,
+        best_parameters, expected_KLD, index, name = mp_find_opt_candidate(
+            10,
+            3,
+            proposals,
+            r_obs,
+            idata,
+            n_hyp_samples,
+            num_workers,
+            save_path / f"ax_client_{i:3d}.json",
         )
-        client.configure_optimization(objective="KLD")
 
-        for _ in range(10):
-            trials = client.get_next_trials(max_trials=1)
-            for trial_idx, parameters in trials.items():
-                candidate = jnp.array(
-                    [
-                        parameters["T"],
-                        parameters["p"],
-                        parameters["c2h"],
-                        parameters["f"],
-                        parameters["c2i"],
-                    ]
-                )
-                KLD_vals = mp_KL_divergence(
-                    proposals,
-                    r_obs,
-                    candidate.squeeze(),
-                    idata,
-                    n_hyp_samples=2,  # TODO
-                    n_cores=num_workers,
-                )
-                mean_KLD = KLD_vals.sum(axis=1).mean(axis=0).item()
-                std_KLD = KLD_vals.sum(axis=1).std(axis=0).item()
-                client.complete_trial(
-                    trial_index=trial_idx,
-                    raw_data={"KLD": (mean_KLD, std_KLD)},
-                )
-                print(
-                    f"Trial {trial_idx} at proposal {candidate.tolist()} has KLD {mean_KLD} ± {std_KLD}"
-                )
-        best_parameters, expected_KLD, index, name = client.get_best_parameterization()
-        proposal = jnp.array(
+        proposal = np.array(
             [
                 best_parameters["T"],
                 best_parameters["p"],
@@ -606,27 +755,27 @@ def main(args):
                 best_parameters["c2i"],
             ]
         )
+        proposals = np.append(proposals, np.atleast_2d(proposal), axis=0)
         print(
-            f"Best proposal at iteration {i}: {proposal.tolist()} with expected KLD {expected_KLD['KLD'][0].item()}"
+            f"Best proposal at iteration {i}: {proposal.tolist()} with expected KLD {expected_KLD['KLD'][0]}"
         )
-
         trial_sum.update(
             {
                 "expected": {
                     "x": proposal.tolist(),
-                    "KLD": expected_KLD["KLD"][0].item(),
+                    "KLD": expected_KLD["KLD"][0],
                 }
             }
         )
         trials_sum.append(trial_sum)
 
-    exp_summary.update(
-        {
-            "trials": trials_sum,
-        }
-    )
-    with open(save_path / f"experiment_summary_{EXP_ID}.json", "w") as f:
-        f.write(json.dumps(exp_summary))
+        exp_summary.update(
+            {
+                "trials": trials_sum,
+            }
+        )
+        with open(save_path / f"experiment_summary_{EXP_ID}.json", "w") as f:
+            f.write(json.dumps(exp_summary))
 
 
 if __name__ == "__main__":
@@ -635,7 +784,7 @@ if __name__ == "__main__":
     EXP_ID = namer.generate()
     exp_summary = {
         "experiment_id": EXP_ID,
-        "root file": Path.cwd(),
+        "root file": str(Path.cwd()),
         "args": vars(args),
     }
     save_path = Path.cwd() / "data" / f"{EXP_ID}"
