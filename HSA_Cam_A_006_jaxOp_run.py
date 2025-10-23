@@ -3,8 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pymc as pm
 import arviz as az
-import ICIW_Plots
-from scipy.integrate import odeint
 import pytensor as pt
 from HSA_Cam_A_006_jaxOp import (
     bmodel,

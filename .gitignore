@@ -4,3 +4,5 @@ __pycache__
 *.nc
 pymcenv
 archive
+*.err
+*.out
