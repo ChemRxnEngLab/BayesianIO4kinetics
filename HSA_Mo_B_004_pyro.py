@@ -24,8 +24,6 @@ from pyro.optim import Adam
 import arviz as az
 
 
-plt.style.use("ICIWstyle")
-
 # Species indices for partial pressure arrays
 SIDX = {
     "CO2": 0,

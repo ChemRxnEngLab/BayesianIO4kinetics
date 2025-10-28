@@ -26,7 +26,6 @@ Design Philosophy:
 - Use Ax platform for adaptive experimental design
 """
 
-import functools
 import json
 import argparse
 from pathlib import Path
@@ -39,6 +38,7 @@ import xarray
 import namer
 from ax import Client, RangeParameterConfig
 from NestPools import NestablePool
+
 
 from HSA_Mo_B_004_pyro import (
     run_variational_inference,
@@ -53,26 +53,32 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--workers",
     type=int,
-    default=2,
+    default=12,
     help="Number of workers for parallel processing KLD computations",
 )
 parser.add_argument(
     "--KLsamples",
     type=int,
-    default=2,
+    default=12,
     help="Number of hypothetical samples for KL divergence estimation",
 )
 parser.add_argument(
     "--iterations",
     type=int,
-    default=10,  # TODO
+    default=16,  # TODO
     help="Number of points to additionally sample in the experiment",
 )
 parser.add_argument(
     "--optiterations",
     type=int,
-    default=2,
+    default=8,
     help="Number of optimization iterations for Ax",
+)
+parser.add_argument(
+    "--trialsperiteration",
+    type=int,
+    default=3,
+    help="Number of trials per optimization iteration for Ax",
 )
 
 
@@ -640,6 +646,7 @@ def main(args):
     n_hyp_samples = args.KLsamples
     n_iterations = args.iterations
     n_opt_iterations = args.optiterations
+    n_trials_per_iter = args.trialsperiteration
 
     print("=" * 70)
     print("BAYESIAN OPTIMAL EXPERIMENTAL DESIGN - SEQUENTIAL LOOP")
@@ -665,7 +672,7 @@ def main(args):
 
     best_parameters, expected_KLD, _, _ = mp_find_opt_candidate(
         n_iterations=n_opt_iterations,
-        n_trials_per_iter=2,
+        n_trials_per_iter=n_trials_per_iter,
         proposals=empty_proposals,
         r_obs=empty_r_obs,
         idata=prior_idata,
@@ -739,7 +746,7 @@ def main(args):
         print(f"Optimizing next experiment (KL divergence maximization)...")
         best_parameters, expected_KLD, _, _ = mp_find_opt_candidate(
             n_iterations=n_opt_iterations,
-            n_trials_per_iter=2,
+            n_trials_per_iter=n_trials_per_iter,
             proposals=proposals,
             r_obs=r_obs,
             idata=idata,
