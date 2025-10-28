@@ -3,23 +3,16 @@ This file assume homoscedastic noise
 maximal entropy on the priors
 """
 
-from multiprocessing import Pool
 import jax
 import jax.numpy as jnp
 import numpy as np
-import matplotlib.pyplot as plt
 import pytensor.tensor as pt
 import pymc as pm
 from scipy.constants import R
-from scipy.stats import gaussian_kde
-from scipy.integrate import simpson
 from pytensor.graph import Apply, Op
 from pytensor.link.jax.dispatch import jax_funcify
 import arviz as az
 import xarray
-
-
-plt.style.use("ICIWstyle")
 
 SIDX = {
     "CO2": 0,
