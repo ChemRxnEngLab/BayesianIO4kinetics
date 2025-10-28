@@ -1,6 +1,4 @@
-import functools
 import json
-from multiprocessing import Pool
 import argparse
 from pathlib import Path
 import jax.numpy as jnp
@@ -12,12 +10,13 @@ import pymc as pm
 import pytensor
 
 import arviz as az
-from scipy.optimize import minimize
 from scipy.stats import gaussian_kde
 from scipy.integrate import simpson
 import xarray
 import namer
 from ax import Client, RangeParameterConfig
+
+# pytensor.config.mode = "JAX"
 
 from HSA_Mo_B_004 import (
     SIDX,
@@ -27,8 +26,7 @@ from HSA_Mo_B_004 import (
     bmodel,
 )
 
-pytensor.config.mode = "JAX"
-jax.config.update("jax_enable_x64", True)
+# jax.config.update("jax_enable_x64", True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -46,7 +44,7 @@ parser.add_argument(
 parser.add_argument(
     "--iterations",
     type=int,
-    default=10,  # TODO
+    default=20,  # TODO
     help="Number of points to additionally sample in the experiment",
 )
 
@@ -396,6 +394,9 @@ def _single_kl_worker(args):
             draws=4000,
             progressbar=False,
             return_inferencedata=True,
+            chains=4,
+            cores=4,
+            target_accept=0.9,
         )
     klds_i = kl_divergence_between_models(
         idata_new,
@@ -436,7 +437,7 @@ def mp_KL_divergence(
     y_old,
     x_new,
     idata_old,
-    n_hyp_samples=5,
+    n_hyp_samples=4,
     n_cores=4,
 ):
     # Step 1: Generate hypothetical observations at the new experimental condition
@@ -622,7 +623,9 @@ def mp_find_opt_candidate(
             for candidate in candidates
         ]
 
-        with NestablePool(len(candidates)) as pool:
+        n_procs = min(n_workers, len(candidates))
+
+        with NestablePool(n_procs) as pool:
             results = pool.map(_candidate_kl_worker, args_list)
 
         for trial_idx, KLD_vals in zip(indeces, results):
@@ -673,7 +676,7 @@ def main(args):
     empty_proposals = np.empty((0, 5))
     empty_r_obs = np.empty((0, 1))
     best_parameters, expected_KLD, index, name = mp_find_opt_candidate(
-        10,
+        5,
         3,
         empty_proposals,
         empty_r_obs,
@@ -722,7 +725,8 @@ def main(args):
                 pm.sample(
                     tune=1000,
                     draws=4000,
-                    chains=4,
+                    chains=12,
+                    cores=12,
                     target_accept=0.9,
                     return_inferencedata=True,
                 )
@@ -736,7 +740,7 @@ def main(args):
         ### code to maximize the KLD goes here.
 
         best_parameters, expected_KLD, index, name = mp_find_opt_candidate(
-            10,
+            5,
             3,
             proposals,
             r_obs,
@@ -782,6 +786,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     global EXP_ID, exp_summary, save_path
     EXP_ID = namer.generate()
+    print(f"===========\nExperiment ID: {EXP_ID}\n===========")
     exp_summary = {
         "experiment_id": EXP_ID,
         "root file": str(Path.cwd()),
