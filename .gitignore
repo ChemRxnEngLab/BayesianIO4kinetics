@@ -3,6 +3,8 @@ __pycache__
 .mypy_cache
 *.nc
 pymcenv
+pymcenv2
+pyroenv
 archive
 *.err
 *.out
