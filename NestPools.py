@@ -1,4 +1,10 @@
 import multiprocessing.pool
+import multiprocessing
+
+try:
+    multiprocessing.set_start_method("spawn", force=True)
+except RuntimeError:
+    pass  # already set
 
 
 class NoDaemonProcess(multiprocessing.Process):
