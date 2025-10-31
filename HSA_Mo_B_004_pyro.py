@@ -349,10 +349,6 @@ def run_variational_inference(
 
     posterior_samples = predictive(T=T, p_i=p_i, r_obs=None)
 
-    # Remove observation variables if present
-    posterior_samples.pop("r", None)
-    posterior_samples.pop("r_obs", None)
-
     # Convert to ArviZ InferenceData
     # Reshape samples to (chain, draw) format - treat all samples as single chain
     posterior_dict = {}
