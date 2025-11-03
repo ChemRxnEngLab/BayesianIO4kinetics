@@ -6,7 +6,7 @@
 # Number of CPUs per task
 #SBATCH --cpus-per-task=48
 # 64 GB memory required per node
-#SBATCH --mem=64G
+#SBATCH --mem=256G
 # Maximum run time of job
 #SBATCH --time=12:00:00
 # Give job a reasonable name

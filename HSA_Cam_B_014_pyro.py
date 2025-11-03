@@ -534,7 +534,7 @@ def main(args):
     # Step 2: Full factorial design loop
     trials_sum = []
 
-    for i in range(0, n_iterations + 1):
+    for i in range(0, n_iterations):
         print(f"\n{'='*70}")
         print(f"[ITERATION {i}/{n_iterations}]")
         print(f"{'='*70}")
