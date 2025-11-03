@@ -31,6 +31,7 @@ Design Philosophy:
 import json
 import argparse
 from pathlib import Path
+from typing import Optional
 import arviz as az
 import numpy as np
 import torch
@@ -506,7 +507,7 @@ def mp_find_opt_candidate(
     filename: str,
     use_vi: bool = True,
     acquisition: str = "parameter",
-    x_test: torch.Tensor = None,
+    x_test: Optional[torch.Tensor] = None,
     n_pred_samples: int = 500,
 ):
     """
@@ -850,7 +851,7 @@ if __name__ == "__main__":
     EXP_ID = namer.generate()
     exp_summary = {
         "experiment_id": EXP_ID,
-        "root file": str(Path.cwd()),
+        "root file": str(Path(__file__)),
         "args": vars(args),
     }
     save_path = Path.cwd() / "data" / f"{EXP_ID}"
