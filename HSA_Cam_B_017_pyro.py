@@ -83,19 +83,19 @@ parser.add_argument(
     default=3,
     help="Number of trials per optimization iteration for Ax",
 )
-# parser.add_argument(
-#     "--acquisition",
-#     type=str,
-#     default="parametric",
-#     choices=["parametric", "predictive"],
-#     help="Acquisition function: 'parametric' for parametric KLD, 'predictive' for predictive KLD (BALD)",
-# )
-# parser.add_argument(
-#     "--ntestpoints",
-#     type=int,
-#     default=20,
-#     help="Number of test points for predictive KLD acquisition function",
-# )
+parser.add_argument(
+    "--acquisition",
+    type=str,
+    default="predictive",
+    choices=["parametric", "predictive"],
+    help="Acquisition function: 'parametric' for parametric KLD, 'predictive' for predictive KLD (BALD)",
+)
+parser.add_argument(
+    "--ntestpoints",
+    type=int,
+    default=20,
+    help="Number of test points for predictive KLD acquisition function",
+)
 
 
 def kl_marginal(P_samples, Q_samples, eps=1e-12):
