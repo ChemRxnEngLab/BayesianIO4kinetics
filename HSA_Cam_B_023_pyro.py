@@ -730,24 +730,24 @@ def main(args):
         print(f"Observed rates: min={r_obs.min():.2e}, max={r_obs.max():.2e}")
 
         # Run Bayesian inference (Variational Inference for speed)
-        # print("Running variational inference...")
-        # idata = run_variational_inference(
-        #     T=T,
-        #     p_i=p_i,
-        #     r_obs=r_obs.squeeze(),
-        #     num_steps=10000,
-        #     learning_rate=0.01,
-        #     num_samples=4000,
-        # )
-        print("Running MCMC inference...")
-        idata = run_inference(
+        print("Running variational inference...")
+        idata = run_variational_inference(
             T=T,
             p_i=p_i,
             r_obs=r_obs.squeeze(),
-            num_samples=4000,
-            num_warmup=1000,
-            num_chains=8,
+            num_steps=10000,
+            learning_rate=0.01,
+            num_draws=4000,
         )
+        # print("Running MCMC inference...")
+        # idata = run_inference(
+        #     T=T,
+        #     p_i=p_i,
+        #     r_obs=r_obs.squeeze(),
+        #     num_samples=4000,
+        #     num_warmup=1000,
+        #     num_chains=8,
+        # )
 
         # Add prior samples for comparison
         print("Adding prior samples to inference data...")
