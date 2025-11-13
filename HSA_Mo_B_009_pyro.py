@@ -24,6 +24,7 @@ from pyro.infer import MCMC, NUTS, Predictive, SVI, Trace_ELBO
 from pyro.infer.autoguide import AutoMultivariateNormal
 from pyro.optim import Adam
 import arviz as az
+import xarray
 
 
 # Species indices for partial pressure arrays
@@ -439,6 +440,90 @@ def sample_prior(num_samples: int = 1000) -> az.InferenceData:
     # Create InferenceData with prior group
     idata = az.from_pyro(prior=prior_samples)
     return idata
+
+
+def sample_posterior(
+    idata: az.InferenceData,
+    T: torch.Tensor,
+    p_i: torch.Tensor,
+    num_samples: int = 1000,
+    r_obs: Optional[torch.Tensor] = None,
+) -> az.InferenceData:
+    """
+    Sample from the posterior distribution using Predictive.
+
+    Args:
+        idata: ArviZ InferenceData with posterior samples
+        num_samples: Number of posterior predictive samples to generate
+    """
+
+    print(T.shape, p_i.shape, r_obs.shape if r_obs is not None else None)
+
+    # Extract posterior samples from InferenceData
+    # and convert to correct data format
+    draws = az.extract(idata, group="posterior", num_samples=num_samples).data_vars
+    posterior_samples = {}
+    for key, values in draws.items():
+        posterior_samples.update({key: torch.tensor(values.values)})
+    posterior_predictive = Predictive(
+        bayesian_model,
+        posterior_samples=posterior_samples,
+        num_samples=num_samples,
+    )
+
+    posterior_samples = posterior_predictive(T=T, p_i=p_i, r_obs=r_obs)
+
+    # Convert to ArviZ InferenceData
+    # Reshape samples to (chain, draw) format - treat all samples as single chain
+    posterior_dict = {}
+    posterior_predictive_dict = {}
+    for key, value in posterior_samples.items():
+        draws = value.detach().cpu().numpy().squeeze()
+        draws = draws[None, :]
+        if key in ["r_pred", "r"]:
+            posterior_predictive_dict[key] = draws  # shape (n_obs, draws)
+        else:
+            posterior_dict[key] = draws
+
+    if r_obs is None:
+        obs_data_dict = None
+    else:
+        obs_data_dict = {"r": r_obs.detach().cpu().numpy()}
+
+    idata = az.from_dict(
+        posterior=posterior_dict,
+        posterior_predictive=posterior_predictive_dict,
+        observed_data=obs_data_dict,
+        dims={
+            "r_pred": ["obs"],
+            "r": ["obs"],
+        },
+    )
+    return idata
+
+
+def validate_against_holdout(
+    idata: az.InferenceData,
+    holdout: xarray.Dataset,
+    num_samples: int = 1000,
+):
+    post_data = sample_posterior(
+        idata,
+        torch.tensor(holdout.T.values).reshape(-1, 1),
+        torch.tensor(holdout.p.values).reshape(-1, 5),
+        num_samples=num_samples,
+    )
+
+    post_data.add_groups(
+        {
+            "observed_data": {
+                "r": holdout.obs_r.values.reshape(1, 1, -1),
+                "r_pred": holdout.latent_r.values.reshape(1, 1, -1),
+            }
+        }
+    )
+
+    return post_data
 
 
 def generate_synthetic_data(
