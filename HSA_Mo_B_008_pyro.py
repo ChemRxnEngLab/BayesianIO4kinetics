@@ -377,12 +377,14 @@ def run_variational_inference(
     posterior_dict = {}
     posterior_predictive_dict = {}
     for key, value in posterior_samples.items():
-        draws = value.detach().cpu().numpy().squeeze()
-        draws = draws[None, :]
+        draws = value.detach().cpu().numpy()  # shape (draws, 1/n_obs)
+        # add the pseudo "chain" dimension
+        draws = draws[None, :]  # shape (chain, draws, 1/n_obs)
         if key in ["r_pred", "r"]:
-            posterior_predictive_dict[key] = draws  # shape (n_obs, draws)
+            posterior_predictive_dict[key] = draws  # shape (chain, draws, n_obs)
         else:
-            posterior_dict[key] = draws
+            # only squeeze if the key is not a deterministic or observation
+            posterior_dict[key] = draws.squeeze(axis=-1)  # shape (chain, draws)
 
     idata = az.from_dict(
         posterior=posterior_dict,
