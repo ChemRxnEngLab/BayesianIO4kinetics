@@ -859,7 +859,7 @@ def main(args):
     prior_idata.add_groups(posterior=prior_idata.prior)
 
     # Find first experiment from prior (no observations yet)
-    proposals = torch.empty((0, 5), dtype=torch.float32)
+    proposals = torch.empty((0, 6), dtype=torch.float32)
     r_obs = torch.empty((0, 1), dtype=torch.float32)
 
     # Step 2: Full factorial design loop
