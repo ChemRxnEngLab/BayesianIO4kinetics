@@ -5,6 +5,7 @@ __pycache__
 pymcenv
 pymcenv2
 pyroenv
+numpyroenv
 archive
 *.err
 *.out
