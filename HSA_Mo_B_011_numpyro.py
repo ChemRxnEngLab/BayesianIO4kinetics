@@ -68,7 +68,19 @@ def _kinetics_core(
     This function is compiled once and reused for all subsequent calls.
     """
     R_const = 8.314  # Gas constant [J/(mol·K)] - must be local for JIT
-    T_ref = 555.0  # Reference temperature [K]
+    T_ref = 555.0  # Reference temperature [K]    
+
+    p_i = jnp.reshape(p_i,(-1,5))
+    T = jnp.reshape(T,(-1,1))
+    k0 = jnp.reshape(k0,(1,-1))
+    Ea_k = jnp.reshape(Ea_k,(1,-1))
+    A_oh = jnp.reshape(A_oh,(1,-1))
+    dH_oh = jnp.reshape(dH_oh,(1,-1))
+    A_h2 = jnp.reshape(A_h2,(1,-1))
+    dH_h2 = jnp.reshape(dH_h2,(1,-1))
+    A_mix = jnp.reshape(A_mix,(1,-1))
+    dH_mix = jnp.reshape(dH_mix,(1,-1))
+
 
     # Arrhenius rate constant
     k = k0 * jnp.exp(Ea_k / R_const * (1.0 / T_ref - 1.0 / T))
@@ -82,10 +94,10 @@ def _kinetics_core(
     K_eq = 137.0 * T ** (-4.0) * jnp.exp(158700.0 / (R_const * T))
 
     # Extract partial pressures (indexed directly for JIT optimization)
-    p_CO2 = p_i[:, 0, None]  # SIDX["CO2"] = 0
-    p_H2 = p_i[:, 1, None]  # SIDX["H2"] = 1
-    p_H2O = p_i[:, 2, None]  # SIDX["H2O"] = 2
-    p_CH4 = p_i[:, 3, None]  # SIDX["CH4"] = 3
+    p_CO2 = p_i[:, 0:1]  # SIDX["CO2"] = 0, shape: (n_cond, 1)
+    p_H2 = p_i[:, 1:2]  # SIDX["H2"] = 1, shape: (n_cond, 1)
+    p_H2O = p_i[:, 2:3]  # SIDX["H2O"] = 2, shape: (n_cond, 1)
+    p_CH4 = p_i[:, 3:4]  # SIDX["CH4"] = 3, shape: (n_cond, 1)
 
     # Reaction driving force (1 - Q/K_eq)
     driving_force = 1.0 - (p_CH4 * p_H2O**2.0) / (p_CO2 * p_H2**4.0 * K_eq)
@@ -208,41 +220,65 @@ def bayesian_model(
         Sampled or observed reaction rates
     """
     # Sample kinetic parameters from priors
-    k0 = jnp.expand_dims(numpyro.sample("k0", dist.Exponential(1 / 0.001)), -1)
-    Ea_k = jnp.expand_dims(numpyro.sample("Ea_k", dist.Exponential(1 / 60000)), -1)
+    k0 = numpyro.sample("k0", dist.Exponential(1 / 0.001))
+    Ea_k = numpyro.sample("Ea_k", dist.Exponential(1 / 60000))
 
-    A_oh = jnp.expand_dims(numpyro.sample("A_oh", dist.Exponential(1.0)), -1)
-    dH_oh = jnp.expand_dims(numpyro.sample("dH_oh", dist.Exponential(1 / 10000)), -1)
+    A_oh = numpyro.sample("A_oh", dist.Exponential(1.0))
+    dH_oh = numpyro.sample("dH_oh", dist.Exponential(1 / 10000))
 
-    A_h2 = jnp.expand_dims(numpyro.sample("A_h2", dist.Exponential(1.0)), -1)
-    dH_h2 = jnp.expand_dims(numpyro.sample("dH_h2", dist.Normal(-10000, 5000)), -1)
+    A_h2 = numpyro.sample("A_h2", dist.Exponential(1.0))
+    dH_h2 = numpyro.sample("dH_h2", dist.Normal(-10000, 5000))
 
-    A_mix = jnp.expand_dims(numpyro.sample("A_mix", dist.Exponential(1.0)), -1)
-    dH_mix = jnp.expand_dims(numpyro.sample("dH_mix", dist.Normal(-10000, 5000)), -1)
-
+    A_mix = numpyro.sample("A_mix", dist.Exponential(1.0))
+    dH_mix = numpyro.sample("dH_mix", dist.Normal(-10000, 5000))
+    
     # Homoscedastic observation noise
-    sigma_r = jnp.expand_dims(numpyro.sample("sigma_r", dist.HalfNormal(0.1)), -1)
+    sigma_r = numpyro.sample("sigma_r", dist.HalfNormal(0.1))
+
+    k0_r = jnp.reshape(k0, (1,-1))
+    Ea_k_r = jnp.reshape(Ea_k, (1,-1))
+    A_oh_r = jnp.reshape(A_oh, (1,-1))
+    dH_oh_r = jnp.reshape(dH_oh, (1,-1))
+    A_h2_r = jnp.reshape(A_h2, (1,-1))
+    dH_h2_r = jnp.reshape(dH_h2, (1,-1))
+    A_mix_r = jnp.reshape(A_mix, (1,-1))
+    dH_mix_r = jnp.reshape(dH_mix, (1,-1))
+
+    print(f"Input shape: {T.shape=}")
+    print(f"Parameter shape: {k0_r.shape=}")
 
     # Likelihood: observed rates are normally distributed around predictions
     n_obs = T.shape[0]
 
-    # TODO check whether I can pull this out of the plate
-    with numpyro.plate("data", size=n_obs):
-        # Compute predicted reaction rates inside plate context
-        r_pred = kinetics_model(
-            p_i, T, k0, Ea_k, A_oh, dH_oh, A_h2, dH_h2, A_mix, dH_mix
-        ).squeeze(-1)
-        sigma_obs = sigma_r * jnp.abs(r_pred) + 1e-10  # Avoid zero stddev
-        # Store as deterministic for tracking
-        r_pred = numpyro.deterministic("r_pred", r_pred)
+    r_pred = kinetics_model(
+        p_i, 
+        T, 
+        k0_r, 
+        Ea_k_r, 
+        A_oh_r, 
+        dH_oh_r, 
+        A_h2_r, 
+        dH_h2_r, 
+        A_mix_r, 
+        dH_mix_r,
+    )
+    n_obs, n_draws = r_pred.shape
+    # Store as deterministic for tracking
+    r_pred = numpyro.deterministic("r_pred", r_pred)
+    print(f"Prediction shape: {r_pred.shape}")
+    sigma_obs = sigma_r * jnp.abs(r_pred) + 1e-10  # Avoid zero stddev
 
+
+    # TODO check whether I can pull this out of the plate
+    with numpyro.plate("data", size=n_obs, dim=-2):
+        # Compute predicted reaction rates inside plate context
         # Sample observations
         r = numpyro.sample(
             "r",
             dist.Normal(r_pred, sigma_obs),
             obs=r_obs,
         )
-
+        print(f"plate shape: {r.shape}")
     return r
 
 
@@ -271,7 +307,7 @@ def run_inference(
     # Configure NUTS sampler with high target acceptance for challenging posteriors
     seed = jax.random.PRNGKey(42)
     nuts_kernel = NUTS(
-        bayesian_model, 
+        bayesian_model,
         target_accept_prob=0.95,
         dense_mass=True,
         max_tree_depth=14,
@@ -349,12 +385,16 @@ def sample_posterior(
     draws = az.extract(idata, group="posterior", num_samples=num_samples).data_vars
     posterior_samples = {}
     for key, values in draws.items():
+        print(key)
+        print(values.shape)
         posterior_samples.update({key: jnp.array(values.values)})
 
     seed = jax.random.PRNGKey(0)
     posterior_predictive = Predictive(
         bayesian_model,
         posterior_samples=posterior_samples,
+        exclude_deterministic=True,
+        batch_ndims=0,
     )
 
     posterior_samples = posterior_predictive(seed, T=T, p_i=p_i, r_obs=r_obs)
@@ -364,8 +404,9 @@ def sample_posterior(
     posterior_dict = {}
     posterior_predictive_dict = {}
     for key, value in posterior_samples.items():
-        draws = np.array(value).squeeze()
-        draws = draws[None, :]
+        print(f"post sample of: {key}")
+        print(value.shape)
+        draws = np.array(value).T[None,:,:]
         if key in ["r_pred", "r"]:
             posterior_predictive_dict[key] = draws  # shape (n_obs, draws)
         else:
@@ -406,7 +447,11 @@ def validate_against_holdout(
                 "r": holdout.obs_r.values.reshape(1, 1, -1),
                 "r_pred": holdout.latent_r.values.reshape(1, 1, -1),
             }
-        }
+        },
+        dims={
+            "r_pred": ["obs"],
+            "r": ["obs"],
+        },
     )
 
     return post_data
