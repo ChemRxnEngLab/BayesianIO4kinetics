@@ -541,7 +541,7 @@ def mp_find_opt_candidate(
     idata: az.InferenceData,
     n_hyp_samples: int,
     n_workers: int,
-    filename: str,
+    filename: Path,
     use_vi: bool = True,
 ):
     """
