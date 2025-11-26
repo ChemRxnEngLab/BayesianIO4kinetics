@@ -271,7 +271,7 @@ def run_inference(
     # Configure NUTS sampler with high target acceptance for challenging posteriors
     seed = jax.random.PRNGKey(42)
     nuts_kernel = NUTS(
-        bayesian_model, 
+        bayesian_model,
         target_accept_prob=0.95,
         dense_mass=True,
         max_tree_depth=14,
@@ -286,6 +286,7 @@ def run_inference(
         num_samples=num_samples,
         num_warmup=num_warmup,
         num_chains=num_chains,
+        progress_bar=False,
     )
 
     mcmc.run(seed, T=T, p_i=p_i, r_obs=r_obs)
