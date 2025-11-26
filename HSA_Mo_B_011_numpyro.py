@@ -322,6 +322,7 @@ def run_inference(
         num_samples=num_samples,
         num_warmup=num_warmup,
         num_chains=num_chains,
+        progress_bar=False,
     )
 
     mcmc.run(seed, T=T, p_i=p_i, r_obs=r_obs)
