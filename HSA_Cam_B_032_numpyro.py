@@ -45,17 +45,8 @@ import jax.numpy as jnp
 
 from NestPools import NestablePool
 
-#relatively wide priors and usuitable geometry
-# from HSA_Mo_B_011_numpyro import (
-#     run_inference,
-#     run_inference,
-#     predict,
-#     sample_prior,
-#     generate_synthetic_data,
-#     calculate_partial_pressures,
-# )
-#better geometry, better priors
-from HSA_Mo_B_013_numpyro import (
+# relatively wide priors and usuitable geometry
+from HSA_Mo_B_011_numpyro import (
     run_inference,
     run_inference,
     predict,
@@ -63,6 +54,15 @@ from HSA_Mo_B_013_numpyro import (
     generate_synthetic_data,
     calculate_partial_pressures,
 )
+# #better geometry, better priors
+# from HSA_Mo_B_013_numpyro import (
+#     run_inference,
+#     run_inference,
+#     predict,
+#     sample_prior,
+#     generate_synthetic_data,
+#     calculate_partial_pressures,
+# )
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -239,7 +239,7 @@ def KL_divergence(
             p_i_aug,
             y_augmented.squeeze(),
             num_samples=4000,
-            num_warmup=1000,
+            num_warmup=4000,
             num_chains=2,
         )
 
@@ -296,7 +296,7 @@ def _single_kl_worker(args):
         p_i_aug,
         y_augmented.squeeze(),
         num_samples=4000,
-        num_warmup=1000,
+        num_warmup=4000,
         num_chains=2,
     )
 
@@ -738,7 +738,7 @@ def main(args):
             p_i=p_i,
             r_obs=r_obs.squeeze(),
             num_samples=4000,
-            num_warmup=1000,
+            num_warmup=4000,
             num_chains=4,
         )
 
