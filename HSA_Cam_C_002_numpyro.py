@@ -56,36 +56,32 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--workers",
     type=int,
-    default=2,
-    # default=12,
+    default=11,
     help="Number of workers for parallel processing KLD computations",
 )
 parser.add_argument(
     "--KLsamples",
     type=int,
-    # default=12,
-    default=2,
+    default=12,
     help="Number of hypothetical samples for KL divergence estimation",
 )
 parser.add_argument(
     "--iterations",
     type=int,
-    default=4,  # TODO
-    # default=32,  # TODO
+    default=32,
     help="Number of points to additionally sample in the experiment",
 )
 parser.add_argument(
     "--optiterations",
     type=int,
-    default=2,
-    # default=8,
+    # default=2,
+    default=10,
     help="Number of optimization iterations for Ax",
 )
 parser.add_argument(
     "--trialsperiteration",
     type=int,
     default=2,
-    # default=3,
     help="Number of trials per optimization iteration for Ax",
 )
 
@@ -167,9 +163,9 @@ def _single_kl_worker(args):
         T_aug,
         p_i_aug,
         y_augmented,
-        num_samples=400, # TODO 4000
-        num_warmup=100, # TODO 1000
-        num_chains=2,  # TODO
+        num_samples=4000,
+        num_warmup=1000,
+        num_chains=2,
     )
 
     # Compute KL divergence
@@ -178,7 +174,7 @@ def _single_kl_worker(args):
         idata_old,
         key_new="posterior",
         key_old="posterior",
-        n_samples=100, #TODO 1000  
+        n_samples=1000,
         var_names=[
             "k0",
             "Ea_k",
@@ -593,7 +589,7 @@ def main(args):
             p_i=p_i,
             r_obs=r_obs,
             num_samples=4000,
-            num_warmup=1000,
+            num_warmup=4000,
             num_chains=8,
         )
 

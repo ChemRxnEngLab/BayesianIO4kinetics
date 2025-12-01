@@ -49,8 +49,8 @@ parser.add_argument(
 parser.add_argument(
     "--iterations",
     type=int,
-    # default=8,  # TODO
-    default=32,  # TODO
+    # default=8,
+    default=32,
     help="Number of points to additionally sample in the experiment",
 )
 

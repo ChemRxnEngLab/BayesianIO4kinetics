@@ -172,10 +172,10 @@ def _kinetics_core(
     a = solution.ys
 
     def on_fail():
-        jax.debug.print("Deactivation ODE solver failed.")
-        jax.debug.print("k_deact: {k}", k=k_deact)
-        jax.debug.print("Ea_deact: {E}", E=Ea_deact)
-        jax.debug.print("n_deact: {n}", n=n_deact)
+        # jax.debug.print("Deactivation ODE solver failed.")
+        # jax.debug.print("k_deact: {k}", k=k_deact)
+        # jax.debug.print("Ea_deact: {E}", E=Ea_deact)
+        # jax.debug.print("n_deact: {n}", n=n_deact)
         return jnp.full((10, n_obs, 1, n_draws), jnp.nan)
 
     def on_success():
@@ -371,8 +371,9 @@ def run_inference(
         num_samples=num_samples,
         num_warmup=num_warmup,
         num_chains=num_chains,
+        progress_bar=False,
     )
-    mcmc.run(seed, T=T, p_i=p_i, r_obs=r_obs)
+    mcmc.run(seed, T=T, p_i=p_i, r_obs=r_ob)
     # for _ in range(10):
     #     try:
     #         mcmc.run(seed, T=T, p_i=p_i, r_obs=r_obs)
