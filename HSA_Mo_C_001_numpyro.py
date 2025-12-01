@@ -25,6 +25,7 @@ import numpyro
 import numpyro.distributions as dist
 from numpyro.infer import MCMC, NUTS, Predictive
 import arviz as az
+import xarray
 import diffrax as dfx
 
 
@@ -41,9 +42,9 @@ SIDX = {
 TRUE_PARAMS = {
     "k0": jnp.array(3.46e-4),  # Pre-exponential factor [mol/(bar·s·g_cat)]
     "EA": jnp.array(77.5e3),  # Activation energy [J/mol]
-    "k_deact": jnp.array(1e-2),  # Deactivation rate constant [1/s]
-    "EA_deact": jnp.array(75.0e3),  # Deactivation activation energy [J/mol]
-    "n_deact": jnp.array(2),  # Deactivation order [-]
+    "k_deact": jnp.array(2.8e-5),  # Deactivation rate constant [1/s]
+    "EA_deact": jnp.array(35.0e3),  # Deactivation activation energy [J/mol]
+    "n_deact": jnp.array(5),  # Deactivation order [-]
 }
 
 
@@ -59,6 +60,7 @@ def deact_ODE(t, y, params):
     Returns:
         dy/dt: Rate of activity change
     """
+    # print(y)
     k_deact, Ea_deact, n_deact, T = params
     R_const = 8.314  # Gas constant [J/(mol·K)]
     T_ref = 550.0  # Reference temperature [K]
@@ -67,7 +69,7 @@ def deact_ODE(t, y, params):
         k_deact * jnp.exp(Ea_deact / R_const * (1.0 / T_ref - 1.0 / T)), -2
     )
     dy = jnp.where(
-        y <= 1e-3,
+        y <= 1e-3,  # TODO idea: set to higher values to avoid stiffness?
         0.0,
         -k * y**n_deact,
     )
@@ -138,7 +140,17 @@ def _kinetics_core(
     # Solve deactivation ODE using Diffrax
     ode_term = dfx.ODETerm(deact_ODE)
     solver = dfx.Tsit5()
-    stepsize_controller = dfx.PIDController(rtol=1e-8, atol=1e-12)
+    stepsize_controller = dfx.PIDController(
+        # "optimized" values
+        rtol=1e-7,
+        atol=1e-9,
+        pcoeff=0.3,
+        icoeff=0.3,
+        dcoeff=0.0,
+        # old default values:
+        # rtol=1e-8,
+        # atol=1e-12,
+    )
 
     a0 = jnp.ones((n_obs, 1, n_draws))
 
@@ -147,17 +159,42 @@ def _kinetics_core(
         ode_term,
         solver,
         t0=0.0,
-        t1=60.0,
+        t1=12.0 * 60.0 * 60.0,
         dt0=None,  # Let Diffrax choose initial step size
         y0=a0,
         args=(k_deact, Ea_deact, n_deact, T),
-        saveat=dfx.SaveAt(ts=jnp.linspace(0.0, 60.0, 10)),
+        saveat=dfx.SaveAt(ts=jnp.linspace(0.0, 12.0 * 60.0 * 60.0, 10)),
         stepsize_controller=stepsize_controller,
+        # max_steps=2**18,
+        throw=False,
     )
 
     a = solution.ys
 
-    return a * r
+    def on_fail():
+        jax.debug.print("Deactivation ODE solver failed.")
+        jax.debug.print("k_deact: {k}", k=k_deact)
+        jax.debug.print("Ea_deact: {E}", E=Ea_deact)
+        jax.debug.print("n_deact: {n}", n=n_deact)
+        return jnp.full((10, n_obs, 1, n_draws), jnp.nan)
+
+    def on_success():
+        return a * r
+
+    return jax.lax.cond(
+        solution.result == dfx.RESULTS.max_steps_reached,
+        on_fail,
+        on_success,
+    )
+
+    # if solution.result == dfx.RESULTS.max_steps_reached:
+    #     jax.debug.print("Deactivation ODE solver failed.")
+    #     jax.debug.print("k_deact: {k}", k=k_deact)
+    #     jax.debug.print("Ea_deact: {E}", E=Ea_deact)
+    #     jax.debug.print("n_deact: {n}", n=n_deact)
+    #     return jnp.full(r.shape, jnp.nan)
+
+    # return a * r
 
 
 def kinetics_model(
@@ -213,13 +250,13 @@ def calculate_partial_pressures(
     # Calculate CO2 mole fraction from ratios
     x_co2 = (
         1 / (1 + 1 / c2h_ratio + 1 / c2m_ratio + 1 / c2w_ratio + 1 / c2i_ratio)
-    ).squeeze()
+    ).squeeze(-1)
 
     # Calculate other species mole fractions
-    x_h2 = x_co2 / c2h_ratio.squeeze()
-    x_m = x_co2 / c2m_ratio.squeeze()
-    x_w = x_co2 / c2w_ratio.squeeze()
-    x_i = x_co2 / c2i_ratio.squeeze()
+    x_h2 = x_co2 / c2h_ratio.squeeze(-1)
+    x_m = x_co2 / c2m_ratio.squeeze(-1)
+    x_w = x_co2 / c2w_ratio.squeeze(-1)
+    x_i = x_co2 / c2i_ratio.squeeze(-1)
 
     xi = jnp.stack((x_co2, x_h2, x_w, x_m, x_i), axis=1)
 
@@ -249,16 +286,17 @@ def bayesian_model(
     """
     # Sample kinetic parameters from priors (transformed space)
     t_k0 = jnp.expand_dims(numpyro.sample("t_k0", dist.Normal(0, 1)), 0)
-    t_Ea_k = jnp.expand_dims(numpyro.sample("t_Ea_k", dist.Normal(0, 0.1)), 0)
+    t_Ea_k = jnp.expand_dims(numpyro.sample("t_Ea_k", dist.Normal(0, 1)), 0)
     t_k_deact = jnp.expand_dims(numpyro.sample("t_k_deact", dist.Normal(0, 1)), 0)
-    t_Ea_deact = jnp.expand_dims(numpyro.sample("t_Ea_deact", dist.Normal(0, 0.1)), 0)
+    t_Ea_deact = jnp.expand_dims(numpyro.sample("t_Ea_deact", dist.Normal(0, 1)), 0)
+    t_n_deact = jnp.expand_dims(numpyro.sample("t_n_deact", dist.Uniform(0, 1)), 0)
 
     # Transform to original space
     k0 = numpyro.deterministic("k0", 1e-4 * jnp.exp(t_k0))
     Ea_k = numpyro.deterministic("Ea_k", 50e3 * jnp.exp(t_Ea_k))
-    k_deact = numpyro.deterministic("k_deact", 1e-4 * jnp.exp(t_k_deact))
+    k_deact = numpyro.deterministic("k_deact", 1e-5 * jnp.exp(t_k_deact))
     Ea_deact = numpyro.deterministic("Ea_deact", 50e3 * jnp.exp(t_Ea_deact))
-    n_deact = jnp.expand_dims(numpyro.sample("n_deact", dist.Uniform(1, 2)), 0)
+    n_deact = numpyro.deterministic("n_deact", (10.0 - 1.0) * t_n_deact + 1.0)
 
     # Homoscedastic observation noise
     sigma_r = jnp.expand_dims(numpyro.sample("sigma_r", dist.HalfNormal(0.01)), 0)
@@ -316,7 +354,13 @@ def run_inference(
     """
     # Configure NUTS sampler
     seed = jax.random.PRNGKey(42)
-    nuts_kernel = NUTS(bayesian_model, target_accept_prob=0.9)
+    nuts_kernel = NUTS(
+        bayesian_model,
+        # this is supposed to make the sampler slower but more stable
+        target_accept_prob=0.95,
+        max_tree_depth=12,
+        dense_mass=True,
+    )
 
     # Run MCMC
     print(
@@ -328,8 +372,16 @@ def run_inference(
         num_warmup=num_warmup,
         num_chains=num_chains,
     )
-
     mcmc.run(seed, T=T, p_i=p_i, r_obs=r_obs)
+    # for _ in range(10):
+    #     try:
+    #         mcmc.run(seed, T=T, p_i=p_i, r_obs=r_obs)
+    #         break
+    #     except Exception as e:
+    #         seed = jax.random.split(seed, 1)[0]
+    #         print(f"Exception during MCMC run: {e}. Retrying with seed {seed}.")
+    # else:
+    #     raise RuntimeError("MCMC sampling failed after multiple attempts.")
     print("MCMC sampling completed successfully!")
 
     # Convert to ArviZ InferenceData for analysis
@@ -388,30 +440,22 @@ def sample_posterior(
     """
     print(T.shape, p_i.shape, r_obs.shape if r_obs is not None else None)
 
-    # Extract posterior samples from InferenceData
-    draws = az.extract(idata, group="posterior", num_samples=num_samples).data_vars
-    posterior_samples = {}
-    for key, values in draws.items():
-        posterior_samples.update({key: jnp.array(values.values)})
-
-    seed = jax.random.PRNGKey(0)
-    posterior_predictive = Predictive(
-        bayesian_model,
-        posterior_samples=posterior_samples,
+    ## This function does not use apredictive because of shape errors
+    posterior_samples = predict(
+        idata,
+        T,
+        p_i,
+        num_samples=num_samples,
+        key="posterior",
     )
-
-    posterior_samples = posterior_predictive(seed, T=T, p_i=p_i, r_obs=r_obs)
+    # The posterior samples are the "latent" rates.
+    # noise should be added later if needed.
+    # But we mostly compare the latent (unnoisy) rates to holdout data.
 
     # Convert to ArviZ InferenceData
-    posterior_dict = {}
-    posterior_predictive_dict = {}
-    for key, value in posterior_samples.items():
-        draws = np.array(value).squeeze()
-        draws = draws[None, :]
-        if key in ["r_lat", "r"]:
-            posterior_predictive_dict[key] = draws
-        else:
-            posterior_dict[key] = draws
+    posterior_predictive_dict = {
+        "r_lat": jnp.permute_dims(posterior_samples, (3, 1, 0, 2))[None, ...]
+    }
 
     if r_obs is None:
         obs_data_dict = None
@@ -419,15 +463,48 @@ def sample_posterior(
         obs_data_dict = {"r": np.array(r_obs)}
 
     idata = az.from_dict(
-        posterior=posterior_dict,
+        posterior=None,
         posterior_predictive=posterior_predictive_dict,
         observed_data=obs_data_dict,
         dims={
-            "r_lat": ["obs"],
-            "r": ["obs"],
+            "r_lat": ["chain", "draw", "obs", "times", "components"],
         },
     )
     return idata
+
+
+def validate_against_holdout(
+    idata: az.InferenceData,
+    holdout: xarray.Dataset,
+    num_samples: int = 1000,
+):
+    post_data = sample_posterior(
+        idata,
+        jnp.array(holdout.T.values).reshape(-1, 1),
+        jnp.array(holdout.p.values).reshape(-1, 5),
+        num_samples=num_samples,
+    )
+
+    post_data.add_groups(
+        {
+            "observed_data": {
+                "r": jnp.permute_dims(
+                    holdout.obs_r.values,
+                    (3, 1, 0, 2),
+                )[None, ...],
+                "r_lat": jnp.permute_dims(
+                    holdout.latent_r.values,
+                    (3, 1, 0, 2),
+                )[None, ...],
+            }
+        },
+        dims={
+            "r_lat": ["chain", "draw", "obs", "times", "components"],
+            "r": ["chain", "draw", "obs", "times", "components"],
+        },
+    )
+
+    return post_data
 
 
 def generate_synthetic_data(
@@ -458,9 +535,9 @@ def generate_synthetic_data(
     """
     # Set random seed
     if seed is not None:
-        key = jax.random.PRNGKey(seed)
+        key = jax.random.key(seed)
     else:
-        key = jax.random.PRNGKey(763789678968)
+        key = jax.random.key(763789678968)
         key, _ = jax.random.split(key)
 
     # Calculate partial pressures
@@ -471,7 +548,7 @@ def generate_synthetic_data(
 
     # Add Gaussian noise
     rng = jax.random.normal(key, r_true.shape)
-    noise = rng * rel_noise_std * jnp.abs(r_true)
+    noise = rng * rel_noise_std * jnp.absolute(r_true)
     r_obs = r_true + noise
 
     return T, p_i, r_obs
