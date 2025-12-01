@@ -244,8 +244,8 @@ def bayesian_model(
     A_mix_r = jnp.reshape(A_mix, (1,-1))
     dH_mix_r = jnp.reshape(dH_mix, (1,-1))
 
-    print(f"Input shape: {T.shape=}")
-    print(f"Parameter shape: {k0_r.shape=}")
+    # print(f"Input shape: {T.shape=}")
+    # print(f"Parameter shape: {k0_r.shape=}")
 
     # Likelihood: observed rates are normally distributed around predictions
     n_obs = T.shape[0]
@@ -265,7 +265,7 @@ def bayesian_model(
     n_obs, n_draws = r_pred.shape
     # Store as deterministic for tracking
     r_pred = numpyro.deterministic("r_pred", r_pred)
-    print(f"Prediction shape: {r_pred.shape}")
+    # print(f"Prediction shape: {r_pred.shape}")
     sigma_obs = sigma_r * jnp.abs(r_pred) + 1e-10  # Avoid zero stddev
 
 
@@ -278,7 +278,7 @@ def bayesian_model(
             dist.Normal(r_pred, sigma_obs),
             obs=r_obs,
         )
-        print(f"plate shape: {r.shape}")
+        # print(f"plate shape: {r.shape}")
     return r
 
 
@@ -379,15 +379,15 @@ def sample_posterior(
         num_samples: Number of posterior predictive samples to generate
     """
 
-    print(T.shape, p_i.shape, r_obs.shape if r_obs is not None else None)
+    # print(T.shape, p_i.shape, r_obs.shape if r_obs is not None else None)
 
     # Extract posterior samples from InferenceData
     # and convert to correct data format
     draws = az.extract(idata, group="posterior", num_samples=num_samples).data_vars
     posterior_samples = {}
     for key, values in draws.items():
-        print(key)
-        print(values.shape)
+        # print(key)
+        # print(values.shape)
         posterior_samples.update({key: jnp.array(values.values)})
 
     seed = jax.random.PRNGKey(0)
@@ -405,8 +405,8 @@ def sample_posterior(
     posterior_dict = {}
     posterior_predictive_dict = {}
     for key, value in posterior_samples.items():
-        print(f"post sample of: {key}")
-        print(value.shape)
+        # print(f"post sample of: {key}")
+        # print(value.shape)
         draws = np.array(value).T[None,:,:]
         if key in ["r_pred", "r"]:
             posterior_predictive_dict[key] = draws  # shape (n_obs, draws)
