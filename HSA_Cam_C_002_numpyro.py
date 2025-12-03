@@ -163,8 +163,8 @@ def _single_kl_worker(args):
         T_aug,
         p_i_aug,
         y_augmented,
-        num_samples=4000,
-        num_warmup=1000,
+        num_samples=2000,
+        num_warmup=500,
         num_chains=2,
     )
 
@@ -589,7 +589,7 @@ def main(args):
             p_i=p_i,
             r_obs=r_obs,
             num_samples=4000,
-            num_warmup=4000,
+            num_warmup=1000,
             num_chains=8,
         )
 

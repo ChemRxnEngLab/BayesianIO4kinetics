@@ -142,8 +142,8 @@ def _kinetics_core(
     solver = dfx.Tsit5()
     stepsize_controller = dfx.PIDController(
         # "optimized" values
-        rtol=1e-7,
-        atol=1e-9,
+        rtol=1e-4,
+        atol=1e-6,
         pcoeff=0.3,
         icoeff=0.3,
         dcoeff=0.0,
@@ -357,9 +357,9 @@ def run_inference(
     nuts_kernel = NUTS(
         bayesian_model,
         # this is supposed to make the sampler slower but more stable
-        target_accept_prob=0.95,
-        max_tree_depth=12,
-        dense_mass=True,
+        # target_accept_prob=0.95,
+        # max_tree_depth=12,
+        # dense_mass=True,
     )
 
     # Run MCMC
@@ -373,7 +373,7 @@ def run_inference(
         num_chains=num_chains,
         progress_bar=False,
     )
-    mcmc.run(seed, T=T, p_i=p_i, r_obs=r_ob)
+    mcmc.run(seed, T=T, p_i=p_i, r_obs=r_obs)
     # for _ in range(10):
     #     try:
     #         mcmc.run(seed, T=T, p_i=p_i, r_obs=r_obs)
