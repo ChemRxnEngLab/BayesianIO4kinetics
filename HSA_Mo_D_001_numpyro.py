@@ -334,7 +334,9 @@ def predict(
     p_i: jnp.ndarray,
     num_samples: int = 25,
     key: str = "posterior",
-) -> np.ndarray:
+    w_noise: bool = False,
+    seed=None,
+) -> jnp.ndarray:
     """
     Generate posterior predictions for given conditions.
 
@@ -357,6 +359,7 @@ def predict(
     k_deact = jnp.array(draws["k_deact"].values.flatten())
     Ea_deact = jnp.array(draws["Ea_deact"].values.flatten())
     n_deact = jnp.array(draws["n_deact"].values.flatten())
+    sigma_r = jnp.array(draws["sigma_r"].values.flatten())
 
     # Reshape for broadcasting with kinetics model
     params = {
@@ -370,7 +373,18 @@ def predict(
     # Generate predictions
     predictions = kinetics_model(p_i, T, **params)
 
-    return np.array(predictions)
+    if seed is not None:
+        rkey = jax.random.key(seed)
+    else:
+        rkey = jax.random.key(763789678968)
+        rkey, _ = jax.random.split(rkey)
+
+    if w_noise:
+        rng = jax.random.normal(rkey, predictions.shape)
+        noise = rng * sigma_r * jnp.abs(predictions)
+        return predictions + noise
+    else:
+        return predictions
 
 
 def main() -> None:

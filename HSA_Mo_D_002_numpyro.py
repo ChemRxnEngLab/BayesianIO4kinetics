@@ -69,8 +69,8 @@ def bayesian_model(
     Ea_k = numpyro.deterministic("Ea_k", 50e3 * jnp.exp(t_Ea_k))
     k_deact = numpyro.deterministic("k_deact", 1e-5 * jnp.exp(t_k_deact))
     Ea_deact = numpyro.deterministic("Ea_deact", 50e3 * jnp.exp(t_Ea_deact))
-    n_deact = numpyro.deterministic("n_deact", (10.0 - 1.0) * t_n_deact + 1.0)
-    n_deact_r = numpyro.deterministic("n_deact_r", (10.0 - 1.0) * t_n_deact_r + 1.0)
+    n_deact = numpyro.deterministic("n_deact", (7.0 - 3.0) * t_n_deact + 3.0)
+    n_deact_r = numpyro.deterministic("n_deact_r", (3.0 - 0.5) * t_n_deact_r + 0.5)
 
     # Homoscedastic observation noise
     sigma_r = jnp.expand_dims(numpyro.sample("sigma_r", dist.HalfNormal(0.01)), 0)
@@ -336,6 +336,8 @@ def predict(
     p_i: jnp.ndarray,
     num_samples: int = 25,
     key: str = "posterior",
+    w_noise: bool = False,
+    seed=None,
 ) -> np.ndarray:
     """
     Generate posterior predictions for given conditions.
@@ -360,6 +362,7 @@ def predict(
     Ea_deact = jnp.array(draws["Ea_deact"].values.flatten())
     n_deact = jnp.array(draws["n_deact"].values.flatten())
     n_deact_r = jnp.array(draws["n_deact_r"].values.flatten())
+    sigma_r = jnp.array(draws["sigma_r"].values.flatten())
 
     # Reshape for broadcasting with kinetics model
     params = {
@@ -374,7 +377,18 @@ def predict(
     # Generate predictions
     predictions = kinetics_model(p_i, T, **params)
 
-    return np.array(predictions)
+    if seed is not None:
+        rkey = jax.random.key(seed)
+    else:
+        rkey = jax.random.key(763789678968)
+        rkey, _ = jax.random.split(rkey)
+
+    if w_noise:
+        rng = jax.random.normal(rkey, predictions.shape)
+        noise = rng * sigma_r * jnp.abs(predictions)
+        return predictions + noise
+    else:
+        return predictions
 
 
 def main() -> None:
