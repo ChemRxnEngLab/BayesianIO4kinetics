@@ -134,8 +134,8 @@ def _kinetics_core(
     solver = dfx.Tsit5()
     stepsize_controller = dfx.PIDController(
         # "optimized" values
-        rtol=1e-7,
-        atol=1e-9,
+        rtol=1e-5,
+        atol=1e-7,
         pcoeff=0.3,
         icoeff=0.3,
         dcoeff=0.0,
@@ -168,6 +168,7 @@ def _kinetics_core(
         # jax.debug.print("k_deact: {k}", k=k_deact)
         # jax.debug.print("Ea_deact: {E}", E=Ea_deact)
         # jax.debug.print("n_deact: {n}", n=n_deact)
+        # jax.debug.print("n_deact_r: {n}", n=n_deact_r)
         return jnp.full((10, n_obs, 1, n_draws), jnp.nan)
 
     def on_success():
@@ -178,15 +179,6 @@ def _kinetics_core(
         on_fail,
         on_success,
     )
-
-    # if solution.result == dfx.RESULTS.max_steps_reached:
-    #     jax.debug.print("Deactivation ODE solver failed.")
-    #     jax.debug.print("k_deact: {k}", k=k_deact)
-    #     jax.debug.print("Ea_deact: {E}", E=Ea_deact)
-    #     jax.debug.print("n_deact: {n}", n=n_deact)
-    #     return jnp.full(r.shape, jnp.nan)
-
-    # return a * r
 
 
 def kinetics_model(
