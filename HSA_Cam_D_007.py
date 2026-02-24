@@ -39,7 +39,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--iterations",
     type=int,
-    default=4,
+    default=8,
     help="Number of points to additionally sample in the experiment",
 )
 parser.add_argument(
@@ -292,7 +292,7 @@ def main(args):
     print(f"  Experiment ID: {EXP_ID}")
     print("=" * 70)
     # Conduct 8 parameterization runs and then model discrimination runs
-    initial_proposals = LHSDOE(8)
+    initial_proposals = LHSDOE(12)
     T = initial_proposals[:, 0:1]
     p = initial_proposals[:, 1:2]
     c2h = initial_proposals[:, 2:3]
