@@ -6,6 +6,7 @@ pymcenv
 pymcenv2
 pyroenv
 numpyroenv
+.numpyrovenv
 archive
 *.err
 *.out
