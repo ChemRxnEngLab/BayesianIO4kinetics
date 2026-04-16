@@ -150,7 +150,7 @@ def KL_divergence(
     x_old: jnp.ndarray,
     y_old: jnp.ndarray,
     x_new: jnp.ndarray,
-    idata_old: az.InferenceData,
+    idata_old: xarray.DataTree,
     n_hyp_samples: int = 5,
     use_vi: bool = True,
 ):
@@ -322,9 +322,7 @@ def _single_kl_worker(args):
 
 
 def _candidate_kl_worker(
-    args: tuple[
-        jnp.ndarray, jnp.ndarray, jnp.ndarray, az.InferenceData, int, int, bool
-    ],
+    args: tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, xarray.DataTree, int, int, bool],
 ):
     """Top-level worker for parallelizing over candidate proposals."""
     x_old, y_old, x_new, idata_old, n_hyp_samples, n_cores, use_vi = args
@@ -343,7 +341,7 @@ def mp_KL_divergence(
     x_old: jnp.ndarray,
     y_old: jnp.ndarray,
     x_new: jnp.ndarray,
-    idata_old: az.InferenceData,
+    idata_old: xarray.DataTree,
     n_hyp_samples: int = 5,
     n_cores: int = 4,
     use_vi: bool = True,
@@ -428,7 +426,7 @@ def sp_find_opt_candidate(
     n_iterations: int,
     proposals: jnp.ndarray,
     r_obs: jnp.ndarray,
-    idata: az.InferenceData,
+    idata: xarray.DataTree,
     n_hyp_samples: int,
     n_workers: int,
     filename: str,
@@ -529,7 +527,7 @@ def mp_find_opt_candidate(
     n_trials_per_iter: int,
     proposals: jnp.ndarray,
     r_obs: jnp.ndarray,
-    idata: az.InferenceData,
+    idata: xarray.DataTree,
     n_hyp_samples: int,
     n_workers: int,
     filename: Path,

@@ -68,19 +68,18 @@ def _kinetics_core(
     This function is compiled once and reused for all subsequent calls.
     """
     R_const = 8.314  # Gas constant [J/(mol·K)] - must be local for JIT
-    T_ref = 555.0  # Reference temperature [K]    
+    T_ref = 555.0  # Reference temperature [K]
 
-    p_i = jnp.reshape(p_i,(-1,5))
-    T = jnp.reshape(T,(-1,1))
-    k0 = jnp.reshape(k0,(1,-1))
-    Ea_k = jnp.reshape(Ea_k,(1,-1))
-    A_oh = jnp.reshape(A_oh,(1,-1))
-    dH_oh = jnp.reshape(dH_oh,(1,-1))
-    A_h2 = jnp.reshape(A_h2,(1,-1))
-    dH_h2 = jnp.reshape(dH_h2,(1,-1))
-    A_mix = jnp.reshape(A_mix,(1,-1))
-    dH_mix = jnp.reshape(dH_mix,(1,-1))
-
+    p_i = jnp.reshape(p_i, (-1, 5))
+    T = jnp.reshape(T, (-1, 1))
+    k0 = jnp.reshape(k0, (1, -1))
+    Ea_k = jnp.reshape(Ea_k, (1, -1))
+    A_oh = jnp.reshape(A_oh, (1, -1))
+    dH_oh = jnp.reshape(dH_oh, (1, -1))
+    A_h2 = jnp.reshape(A_h2, (1, -1))
+    dH_h2 = jnp.reshape(dH_h2, (1, -1))
+    A_mix = jnp.reshape(A_mix, (1, -1))
+    dH_mix = jnp.reshape(dH_mix, (1, -1))
 
     # Arrhenius rate constant
     k = k0 * jnp.exp(Ea_k / R_const * (1.0 / T_ref - 1.0 / T))
@@ -231,18 +230,18 @@ def bayesian_model(
 
     A_mix = numpyro.sample("A_mix", dist.Exponential(1.0))
     dH_mix = numpyro.sample("dH_mix", dist.Normal(-10000, 5000))
-    
+
     # Homoscedastic observation noise
     sigma_r = numpyro.sample("sigma_r", dist.HalfNormal(0.1))
 
-    k0_r = jnp.reshape(k0, (1,-1))
-    Ea_k_r = jnp.reshape(Ea_k, (1,-1))
-    A_oh_r = jnp.reshape(A_oh, (1,-1))
-    dH_oh_r = jnp.reshape(dH_oh, (1,-1))
-    A_h2_r = jnp.reshape(A_h2, (1,-1))
-    dH_h2_r = jnp.reshape(dH_h2, (1,-1))
-    A_mix_r = jnp.reshape(A_mix, (1,-1))
-    dH_mix_r = jnp.reshape(dH_mix, (1,-1))
+    k0_r = jnp.reshape(k0, (1, -1))
+    Ea_k_r = jnp.reshape(Ea_k, (1, -1))
+    A_oh_r = jnp.reshape(A_oh, (1, -1))
+    dH_oh_r = jnp.reshape(dH_oh, (1, -1))
+    A_h2_r = jnp.reshape(A_h2, (1, -1))
+    dH_h2_r = jnp.reshape(dH_h2, (1, -1))
+    A_mix_r = jnp.reshape(A_mix, (1, -1))
+    dH_mix_r = jnp.reshape(dH_mix, (1, -1))
 
     # print(f"Input shape: {T.shape=}")
     # print(f"Parameter shape: {k0_r.shape=}")
@@ -251,15 +250,15 @@ def bayesian_model(
     n_obs = T.shape[0]
 
     r_pred = kinetics_model(
-        p_i, 
-        T, 
-        k0_r, 
-        Ea_k_r, 
-        A_oh_r, 
-        dH_oh_r, 
-        A_h2_r, 
-        dH_h2_r, 
-        A_mix_r, 
+        p_i,
+        T,
+        k0_r,
+        Ea_k_r,
+        A_oh_r,
+        dH_oh_r,
+        A_h2_r,
+        dH_h2_r,
+        A_mix_r,
         dH_mix_r,
     )
     n_obs, n_draws = r_pred.shape
@@ -267,7 +266,6 @@ def bayesian_model(
     r_pred = numpyro.deterministic("r_pred", r_pred)
     # print(f"Prediction shape: {r_pred.shape}")
     sigma_obs = sigma_r * jnp.abs(r_pred) + 1e-10  # Avoid zero stddev
-
 
     # TODO check whether I can pull this out of the plate
     with numpyro.plate("data", size=n_obs, dim=-2):
@@ -289,7 +287,7 @@ def run_inference(
     num_samples: int = 4000,
     num_warmup: int = 1000,
     num_chains: int = 4,
-) -> az.InferenceData:
+) -> xarray.DataTree:
     """
     Run MCMC inference to estimate kinetic parameters.
 
@@ -339,7 +337,7 @@ def run_inference(
 # For variational inference in NumPyro, use numpyro.infer.SVI with custom guides
 
 
-def sample_prior(num_samples: int = 1000) -> az.InferenceData:
+def sample_prior(num_samples: int = 1000) -> xarray.DataTree:
     """
     Sample from the prior distribution.
 
@@ -365,12 +363,12 @@ def sample_prior(num_samples: int = 1000) -> az.InferenceData:
 
 
 def sample_posterior(
-    idata: az.InferenceData,
+    idata: xarray.DataTree,
     T: jnp.ndarray,
     p_i: jnp.ndarray,
     num_samples: int = 1000,
     r_obs: Optional[jnp.ndarray] = None,
-) -> az.InferenceData:
+) -> xarray.DataTree:
     """
     Sample from the posterior distribution using Predictive.
 
@@ -407,7 +405,7 @@ def sample_posterior(
     for key, value in posterior_samples.items():
         # print(f"post sample of: {key}")
         # print(value.shape)
-        draws = np.array(value).T[None,:,:]
+        draws = np.array(value).T[None, :, :]
         if key in ["r_pred", "r"]:
             posterior_predictive_dict[key] = draws  # shape (n_obs, draws)
         else:
@@ -431,7 +429,7 @@ def sample_posterior(
 
 
 def validate_against_holdout(
-    idata: az.InferenceData,
+    idata: xarray.DataTree,
     holdout: xarray.Dataset,
     num_samples: int = 1000,
 ):
@@ -506,7 +504,7 @@ def generate_synthetic_data(
 
 
 def predict(
-    idata: az.InferenceData,
+    idata: xarray.DataTree,
     T: jnp.ndarray,
     p_i: jnp.ndarray,
     num_samples: int = 25,
