@@ -416,10 +416,15 @@ def sample_posterior(
     else:
         obs_data_dict = {"r": np.array(r_obs)}
 
+    data = {
+        "posterior": posterior_dict,
+        "posterior_predictive": posterior_predictive_dict,
+    }
+    if obs_data_dict is not None:
+        data["observed_data"] = obs_data_dict
+
     idata = az.from_dict(
-        posterior=posterior_dict,
-        posterior_predictive=posterior_predictive_dict,
-        observed_data=obs_data_dict,
+        data,
         dims={
             "r_pred": ["obs"],
             "r": ["obs"],
@@ -440,7 +445,7 @@ def validate_against_holdout(
         num_samples=num_samples,
     )
 
-    post_data.add_groups(
+    obs_data = az.from_dict(
         {
             "observed_data": {
                 "r": holdout.obs_r.values.reshape(1, 1, -1),
@@ -452,6 +457,7 @@ def validate_against_holdout(
             "r": ["obs"],
         },
     )
+    post_data.update(obs_data)
 
     return post_data
 

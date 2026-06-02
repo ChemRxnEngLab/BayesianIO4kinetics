@@ -104,10 +104,14 @@ def _kinetics_core(
     K_eq = 137.0 * T ** (-4.0) * jnp.exp(158700.0 / (R_const * T))
 
     # Extract partial pressures
-    p_CO2 = p_i[:, 0, None]  # SIDX["CO2"] = 0
-    p_H2 = p_i[:, 1, None]  # SIDX["H2"] = 1
-    p_H2O = p_i[:, 2, None]  # SIDX["H2O"] = 2
-    p_CH4 = p_i[:, 3, None]  # SIDX["CH4"] = 3
+    p_CO2 = p_i[:, 0, None]  # SIDX["CO2"] = 0 shape: (n_obs, 1)
+    p_H2 = p_i[:, 1, None]  # SIDX["H2"] = 1 shape: (n_obs, 1)
+    p_H2O = p_i[:, 2, None]  # SIDX["H2O"] = 2 shape: (n_obs, 1)
+    p_CH4 = p_i[:, 3, None]  # SIDX["CH4"] = 3 shape: (n_obs, 1)
+
+    # p shape (n_obs, 1) broadcasts correctly with k shape (1, n_draws) 
+    # to produce (n_obs, n_draws) to which we insert the component 
+    # for correct broadcasting with the ODE solution shape (n_obs, 1, n_draws)
 
     # Reaction driving force (1 - Q/K_eq)
     driving_force = 1.0 - (p_CH4 * p_H2O**2.0) / (p_CO2 * p_H2**4.0 * K_eq)
@@ -122,7 +126,7 @@ def _kinetics_core(
 
     # LHHW rate equation
     r = k * sqrt_p_H2 * sqrt_p_CO2 * driving_force / inhibition
-    r = jnp.expand_dims(r, -2)
+    r = jnp.expand_dims(r, -2)  # shape: (n_obs, *1*, n_draws)
     n_obs = T.shape[0]
     n_draws = r.shape[2]
 
