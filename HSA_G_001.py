@@ -15,9 +15,9 @@ from scipy.stats import gaussian_kde
 from scipy.integrate import simpson
 import xarray
 import namer
-from ax import Client, RangeParameterConfig
 import numpyro
 
+numpyro.set_platform("cpu")
 numpyro.set_host_device_count(48)
 import jax
 import jax.numpy as jnp
@@ -25,7 +25,7 @@ import jax.numpy as jnp
 from NestPools import NestablePool
 
 
-from HSA_Mo_B_011_numpyro import (
+from HSA_Mo_B_012_numpyro import (
     run_inference,
     predict,
     sample_prior,
@@ -64,335 +64,6 @@ parser.add_argument(
     default=2,
     help="Number of trials per optimization iteration for Ax",
 )
-
-
-def kl_marginal(P_samples, Q_samples, eps=1e-12):
-    kde_P = gaussian_kde(P_samples)
-    kde_Q = gaussian_kde(Q_samples)
-
-    grid = np.linspace(
-        min(P_samples.min(), Q_samples.min()),
-        max(P_samples.max(), Q_samples.max()),
-        1000,
-    )
-
-    p_vals = kde_P(grid) + eps
-    q_vals = kde_Q(grid) + eps
-
-    kld = simpson(p_vals * np.log(p_vals / q_vals), grid)
-    return kld
-
-
-def kl_divergence_between_models(
-    idata_new,
-    idata_old,
-    key_new="posterior",
-    key_old="posterior",
-    n_samples=1000,
-    var_names=None,
-):
-    if var_names is None:
-        var_names = list(idata_new[key_new].data_vars.keys())
-
-    old_samples = az.extract(
-        idata_old,
-        group=key_old,
-        num_samples=n_samples,
-        var_names=var_names,
-    )
-    new_samples = az.extract(
-        idata_new,
-        group=key_new,
-        num_samples=n_samples,
-        var_names=var_names,
-    )
-    klds = []
-    # Compute KL divergence using marginal distributions
-    for var in old_samples.data_vars:
-        P_samples = new_samples[var].values.flatten()
-        Q_samples = old_samples[var].values.flatten()
-        kl_div = kl_marginal(P_samples, Q_samples)
-        klds.append(kl_div)
-    return np.array(klds)
-
-
-def KL_divergence(
-    x_old: jnp.ndarray,
-    y_old: jnp.ndarray,
-    x_new: jnp.ndarray,
-    idata_old: az.InferenceData,
-    n_hyp_samples: int = 5,
-    use_vi: bool = True,
-):
-    """
-    Compute KL divergence between posterior distributions before and after adding hypothetical data.
-
-    KL(P_new || P_old) = E_P_new[log P_new(θ) - log P_old(θ)]
-
-    Args:
-        x_old: Current experimental conditions (n_current, 5) [T, p, c2h, f, c2i]
-        y_old: Current observations (n_current, 1)
-        x_new: New experimental condition to test (5,) [T, p, c2h, f, c2i]
-        idata_old: Current posterior samples (ArviZ InferenceData)
-        n_hyp_samples: Number of hypothetical observations to average over
-        use_vi: If True, use variational inference (faster); if False, use MCMC (slower but more accurate)
-
-    Returns:
-        xarray.DataArray of KL divergences with dimensions (hyp_sample, parameter)
-    """
-    # Extract conditions from x_new
-    T_new = x_new[0:1].reshape(-1, 1)
-    p_new = x_new[1:2].reshape(-1, 1)
-    c2h_new = x_new[2:3].reshape(-1, 1)
-    c2m_new = x_new[3:4].reshape(-1, 1)
-    c2w_new = x_new[4:5].reshape(-1, 1)
-    c2i_new = x_new[5:6].reshape(-1, 1)
-
-    # Calculate partial pressures for new condition
-    p_i_new = calculate_partial_pressures(p_new, c2h_new, c2m_new, c2w_new, c2i_new)
-
-    # Step 1: Generate hypothetical observations at the new experimental condition
-    y_new_samples = predict(
-        idata_old,
-        T_new,
-        p_i_new,
-        key="posterior",
-        num_samples=n_hyp_samples,
-    ).reshape(-1, 1)
-    print(f"Generated {n_hyp_samples} hypothetical observations at new condition")
-
-    # Step 2: Compute KL divergence for each hypothetical observation
-    klds = xarray.DataArray(
-        dims=["hyp_sample", "parameter"],
-        coords={
-            "hyp_sample": np.arange(n_hyp_samples),
-            "parameter": [
-                "k0",
-                "Ea_k",
-                "A_oh",
-                "dH_oh",
-                "A_h2",
-                "dH_h2",
-                "A_mix",
-                "dH_mix",
-                "sigma_r",
-            ],
-        },
-        data=np.zeros((n_hyp_samples, 9)),
-    )
-
-    for i in range(n_hyp_samples):
-        print(f"Processing hypothetical sample {i+1}/{n_hyp_samples}")
-
-        # Get the i-th hypothetical observation
-        y_hyp = jnp.array(y_new_samples[i].reshape(1, 1))
-
-        # Create augmented dataset: combine current data with hypothetical observation
-        x_augmented = jnp.vstack([x_old, x_new.reshape(1, -1)])
-        y_augmented = jnp.vstack([y_old, y_hyp])
-
-        # Extract conditions and generate synthetic data structure
-        T_aug = x_augmented[:, 0:1]
-        p_aug = x_augmented[:, 1:2]
-        c2h_aug = x_augmented[:, 2:3]
-        c2m_aug = x_augmented[:, 3:4]
-        c2w_aug = x_augmented[:, 4:5]
-        c2i_aug = x_augmented[:, 5:6]
-
-        # Calculate partial pressures for augmented data
-        p_i_aug = calculate_partial_pressures(p_aug, c2h_aug, c2m_aug, c2w_aug, c2i_aug)
-
-        # Sample from the new posterior (with augmented data)
-        idata_new = run_inference(
-            T_aug,
-            p_i_aug,
-            y_augmented.squeeze(),
-            num_samples=4000,
-            num_warmup=1000,
-            num_chains=2,
-        )
-
-        # Step 3: Compute KL divergence between posteriors
-        klds_i = kl_divergence_between_models(
-            idata_new,
-            idata_old,
-            key_new="posterior",
-            key_old="posterior",
-            n_samples=1000,
-            var_names=[
-                "k0",
-                "Ea_k",
-                "A_oh",
-                "dH_oh",
-                "A_h2",
-                "dH_h2",
-                "A_mix",
-                "dH_mix",
-                "sigma_r",
-            ],
-        )
-        klds.loc[i, :] = klds_i
-
-    # Step 4: Return KL divergences across all hypothetical samples
-    return klds
-
-
-def _single_kl_worker(args):
-    """
-    Worker function for computing KL divergence for a single hypothetical observation.
-    Must be at top level for multiprocessing on Windows.
-    """
-    x_old, y_old, x_new, idata_old, y_hyp, use_vi = args
-
-    # Create augmented dataset
-    x_augmented = jnp.vstack([x_old, x_new.reshape(1, -1)])
-    y_augmented = jnp.vstack([y_old, y_hyp])
-
-    # Extract conditions
-    T_aug = x_augmented[:, 0:1]
-    p_aug = x_augmented[:, 1:2]
-    c2h_aug = x_augmented[:, 2:3]
-    c2m_aug = x_augmented[:, 3:4]
-    c2w_aug = x_augmented[:, 4:5]
-    c2i_aug = x_augmented[:, 5:6]
-
-    # Calculate partial pressures
-    p_i_aug = calculate_partial_pressures(p_aug, c2h_aug, c2m_aug, c2w_aug, c2i_aug)
-
-    # Run inference on augmented data
-    idata_new = run_inference(
-        T_aug,
-        p_i_aug,
-        y_augmented.squeeze(),
-        num_samples=4000,
-        num_warmup=1000,
-        num_chains=2,
-    )
-
-    # Compute KL divergence
-    klds_i = kl_divergence_between_models(
-        idata_new,
-        idata_old,
-        key_new="posterior",
-        key_old="posterior",
-        n_samples=1000,
-        var_names=[
-            "k0",
-            "Ea_k",
-            "A_oh",
-            "dH_oh",
-            "A_h2",
-            "dH_h2",
-            "A_mix",
-            "dH_mix",
-            "sigma_r",
-        ],
-    )
-    return klds_i
-
-
-def _candidate_kl_worker(
-    args: tuple[
-        jnp.ndarray, jnp.ndarray, jnp.ndarray, az.InferenceData, int, int, bool
-    ],
-):
-    """Top-level worker for parallelizing over candidate proposals."""
-    x_old, y_old, x_new, idata_old, n_hyp_samples, n_cores, use_vi = args
-    return mp_KL_divergence(
-        x_old=x_old,
-        y_old=y_old,
-        x_new=x_new.squeeze(),
-        idata_old=idata_old,
-        n_hyp_samples=n_hyp_samples,
-        n_cores=n_cores,
-        use_vi=use_vi,
-    )
-
-
-def mp_KL_divergence(
-    x_old: jnp.ndarray,
-    y_old: jnp.ndarray,
-    x_new: jnp.ndarray,
-    idata_old: az.InferenceData,
-    n_hyp_samples: int = 5,
-    n_cores: int = 4,
-    use_vi: bool = True,
-):
-    """
-    Compute KL divergence in parallel across multiple hypothetical observations.
-
-    Args:
-        x_old: Current experimental conditions (n_current, 5)
-        y_old: Current observations (n_current, 1)
-        x_new: New experimental condition to test (5,)
-        idata_old: Current posterior samples
-        n_hyp_samples: Number of hypothetical observations
-        n_cores: Number of parallel workers
-        use_vi: If True, use VI (fast); if False, use MCMC (accurate)
-
-    Returns:
-        xarray.DataArray of KL divergences
-    """
-    # Extract conditions from x_new
-    T_new = x_new[0:1].reshape(-1, 1)
-    p_new = x_new[1:2].reshape(-1, 1)
-    c2h_new = x_new[2:3].reshape(-1, 1)
-    c2m_new = x_new[3:4].reshape(-1, 1)
-    c2w_new = x_new[4:5].reshape(-1, 1)
-    c2i_new = x_new[5:6].reshape(-1, 1)
-
-    # Calculate partial pressures
-    p_i_new = calculate_partial_pressures(p_new, c2h_new, c2m_new, c2w_new, c2i_new)
-
-    # Step 1: Generate hypothetical observations at the new experimental condition
-    y_new_samples = predict(
-        idata_old,
-        T_new,
-        p_i_new,
-        key="posterior",
-        num_samples=n_hyp_samples,
-    ).reshape(-1, 1)
-    print(f"Generated {n_hyp_samples} hypothetical observations at new condition")
-
-    # Step 2: Compute KL divergence for each hypothetical observation in parallel
-    args_list = [
-        (
-            x_old,
-            y_old,
-            x_new,
-            idata_old,
-            jnp.array(y_new_samples[i].reshape(1, 1)),
-            use_vi,
-        )
-        for i in range(n_hyp_samples)
-    ]
-    n_procs = min(n_cores, n_hyp_samples)
-    with NestablePool(n_procs) as pool:
-        results = pool.map(_single_kl_worker, args_list)
-    print("Completed KL divergence computations in parallel")
-
-    klds = xarray.DataArray(
-        dims=["hyp_sample", "parameter"],
-        coords={
-            "hyp_sample": np.arange(n_hyp_samples),
-            "parameter": [
-                "k0",
-                "Ea_k",
-                "A_oh",
-                "dH_oh",
-                "A_h2",
-                "dH_h2",
-                "A_mix",
-                "dH_mix",
-                "sigma_r",
-            ],
-        },
-        data=np.stack(results, axis=0),
-    )
-
-    # Step 4: Return KL divergences across all hypothetical samples
-    return klds
-
 
 def koschany_design():
     proposals = [
@@ -840,7 +511,7 @@ def main(args):
 
     # Step 1: Sample prior and find initial optimal experiment
     prior_idata = sample_prior(num_samples=4000)
-    prior_idata.add_groups(posterior=prior_idata.prior)
+    prior_idata.posterior   = prior_idata.prior.copy()
 
     # Find first experiment from prior (no observations yet)
     proposals = jnp.empty((0, 6))
@@ -855,18 +526,6 @@ def main(args):
         print(f"{'='*70}")
 
         new_proposal = all_proposals[i : i + 1, :]
-
-        KLD_vals = mp_KL_divergence(
-            x_old=proposals,
-            y_old=r_obs,
-            x_new=new_proposal.squeeze(),
-            idata_old=prior_idata,
-            n_hyp_samples=n_hyp_samples,
-            n_cores=num_workers,
-            use_vi=True,
-        )
-        mean_KLD = KLD_vals.sum(axis=1).mean(axis=0).item()
-        std_KLD = KLD_vals.sum(axis=1).std(axis=0).item()
 
         # append the new proposal we just calculated KLD for and condition the model
         proposals = jnp.concatenate([proposals, new_proposal], axis=0)
@@ -890,7 +549,7 @@ def main(args):
         idata = run_inference(
             T=T,
             p_i=p_i,
-            r_obs=r_obs.squeeze(),
+            r_obs=r_obs,
             num_samples=4000,
             num_warmup=4000,
             num_chains=8,
@@ -911,8 +570,8 @@ def main(args):
                 "y": r_obs.tolist(),
             },
             "predicted_before_obs": {
-                "expected_KLD": mean_KLD,
-                "std_KLD": std_KLD,
+                "expected_KLD": None,
+                "std_KLD": None,
             },
             "trace_path": str(trace_filename),
         }
