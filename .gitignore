@@ -11,3 +11,4 @@ numpyroenv
 archive
 *.err
 *.out
+.vibe
