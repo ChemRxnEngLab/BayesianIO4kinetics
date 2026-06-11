@@ -13,6 +13,7 @@ Each seed run:
 
 import json
 import argparse
+import gc
 from pathlib import Path
 import datetime
 import logging
@@ -27,10 +28,7 @@ from ax import Client, RangeParameterConfig
 import numpyro
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 numpyro.set_host_device_count(48)
@@ -82,7 +80,7 @@ parser.add_argument(
 parser.add_argument(
     "--seed",
     type=int,
-    default=42,
+    default=43,
     help="Base random seed for reproducible workflow execution",
 )
 parser.add_argument(
@@ -93,368 +91,429 @@ parser.add_argument(
 )
 
 
-def kl_marginal(P_samples, Q_samples, eps=1e-12):
-    kde_P = gaussian_kde(P_samples)
-    kde_Q = gaussian_kde(Q_samples)
-
-    grid = np.linspace(
-        min(P_samples.min(), Q_samples.min()),
-        max(P_samples.max(), Q_samples.max()),
-        1000,
-    )
-
-    p_vals = kde_P(grid) + eps
-    q_vals = kde_Q(grid) + eps
-
-    kld = simpson(p_vals * np.log(p_vals / q_vals), grid)
-    return kld
-
-
-def kl_divergence_between_models(
-    idata_new,
-    idata_old,
-    key_new="posterior",
-    key_old="posterior",
-    n_samples=1000,
-    var_names=None,
-):
-    if var_names is None:
-        var_names = list(idata_new[key_new].data_vars.keys())
-
-    old_samples = az.extract(
-        idata_old,
-        group=key_old,
-        num_samples=n_samples,
-        var_names=var_names,
-    )
-    new_samples = az.extract(
-        idata_new,
-        group=key_new,
-        num_samples=n_samples,
-        var_names=var_names,
-    )
-    klds = []
-    for var in old_samples.data_vars:
-        P_samples = new_samples[var].values.flatten()
-        Q_samples = old_samples[var].values.flatten()
-        kl_div = kl_marginal(P_samples, Q_samples)
-        klds.append(kl_div)
-    return np.array(klds)
-
-
-def KL_divergence(
-    x_old: jnp.ndarray,
-    y_old: jnp.ndarray,
-    x_new: jnp.ndarray,
-    idata_old: az.InferenceData,
-    n_hyp_samples: int = 5,
-    use_vi: bool = True,
-):
-    """
-    Compute KL divergence between posterior distributions before and after adding hypothetical data.
-
-    KL(P_new || P_old) = E_P_new[log P_new(theta) - log P_old(theta)]
-
-    Args:
-        x_old: Current experimental conditions (n_current, 5) [T, p, c2h, f, c2i]
-        y_old: Current observations (n_current, 1)
-        x_new: New experimental condition to test (5,) [T, p, c2h, f, c2i]
-        idata_old: Current posterior samples (ArviZ InferenceData)
-        n_hyp_samples: Number of hypothetical observations to average over
-        use_vi: If True, use variational inference (faster); if False, use MCMC
-
-    Returns:
-        xarray.DataArray of KL divergences with dimensions (hyp_sample, parameter)
-    """
-    T_new = x_new[0:1].reshape(-1, 1)
-    p_new = x_new[1:2].reshape(-1, 1)
-    c2h_new = x_new[2:3].reshape(-1, 1)
-    c2m_new = x_new[3:4].reshape(-1, 1)
-    c2w_new = x_new[4:5].reshape(-1, 1)
-    c2i_new = x_new[5:6].reshape(-1, 1)
-
-    p_i_new = calculate_partial_pressures(p_new, c2h_new, c2m_new, c2w_new, c2i_new)
-
-    y_new_samples = predict(
-        idata_old, T_new, p_i_new, key="posterior", num_samples=n_hyp_samples
-    ).reshape(-1, 1)
-    logger.debug(f"Generated {n_hyp_samples} hypothetical observations at new condition")
-
-    klds = xarray.DataArray(
-        dims=["hyp_sample", "parameter"],
-        coords={
-            "hyp_sample": np.arange(n_hyp_samples),
-            "parameter": [
-                "k0", "Ea_k", "A_oh", "dH_oh",
-                "A_h2", "dH_h2", "A_mix", "dH_mix", "sigma_r",
-            ],
-        },
-        data=np.zeros((n_hyp_samples, 9)),
-    )
-
-    for i in range(n_hyp_samples):
-        logger.debug(f"Processing hypothetical sample {i+1}/{n_hyp_samples}")
-
-        y_hyp = jnp.array(y_new_samples[i].reshape(1, 1))
-        x_augmented = jnp.vstack([x_old, x_new.reshape(1, -1)])
-        y_augmented = jnp.vstack([y_old, y_hyp])
-
-        T_aug = x_augmented[:, 0:1]
-        p_aug = x_augmented[:, 1:2]
-        c2h_aug = x_augmented[:, 2:3]
-        c2m_aug = x_augmented[:, 3:4]
-        c2w_aug = x_augmented[:, 4:5]
-        c2i_aug = x_augmented[:, 5:6]
-
-        p_i_aug = calculate_partial_pressures(p_aug, c2h_aug, c2m_aug, c2w_aug, c2i_aug)
-
-        idata_new = run_inference(
-            T_aug, p_i_aug, y_augmented,
-            num_samples=4000, num_warmup=1000, num_chains=2,
-        )
-
-        klds_i = kl_divergence_between_models(
-            idata_new, idata_old, key_new="posterior", key_old="posterior",
-            n_samples=1000,
-            var_names=[
-                "k0", "Ea_k", "A_oh", "dH_oh",
-                "A_h2", "dH_h2", "A_mix", "dH_mix", "sigma_r",
-            ],
-        )
-        klds.loc[i, :] = klds_i
-
-    return klds
-
-
-def _single_kl_worker(args):
-    """Worker function for computing KL divergence for a single hypothetical observation."""
-    x_old, y_old, x_new, idata_old, y_hyp, use_vi = args
-
-    x_augmented = jnp.vstack([x_old, x_new.reshape(1, -1)])
-    y_augmented = jnp.vstack([y_old, y_hyp])
-
-    T_aug = x_augmented[:, 0:1]
-    p_aug = x_augmented[:, 1:2]
-    c2h_aug = x_augmented[:, 2:3]
-    c2m_aug = x_augmented[:, 3:4]
-    c2w_aug = x_augmented[:, 4:5]
-    c2i_aug = x_augmented[:, 5:6]
-
-    p_i_aug = calculate_partial_pressures(p_aug, c2h_aug, c2m_aug, c2w_aug, c2i_aug)
-
-    idata_new = run_inference(
-        T_aug, p_i_aug, y_augmented,
-        num_samples=4000, num_warmup=1000, num_chains=2,
-    )
-
-    klds_i = kl_divergence_between_models(
-        idata_new, idata_old, key_new="posterior", key_old="posterior",
-        n_samples=1000,
-        var_names=[
-            "k0", "Ea_k", "A_oh", "dH_oh",
-            "A_h2", "dH_h2", "A_mix", "dH_mix", "sigma_r",
-        ],
-    )
-    return klds_i
-
-
-def _candidate_kl_worker(args):
-    """Top-level worker for parallelizing over candidate proposals."""
-    x_old, y_old, x_new, idata_old, n_hyp_samples, n_cores, use_vi = args
-    return mp_KL_divergence(
-        x_old=x_old, y_old=y_old, x_new=x_new.squeeze(),
-        idata_old=idata_old, n_hyp_samples=n_hyp_samples,
-        n_cores=n_cores, use_vi=use_vi,
-    )
-
-
-def mp_KL_divergence(
-    x_old: jnp.ndarray,
-    y_old: jnp.ndarray,
-    x_new: jnp.ndarray,
-    idata_old: az.InferenceData,
-    n_hyp_samples: int = 5,
-    n_cores: int = 4,
-    use_vi: bool = True,
-):
-    """
-    Compute KL divergence in parallel across multiple hypothetical observations.
-    """
-    T_new = x_new[0:1].reshape(-1, 1)
-    p_new = x_new[1:2].reshape(-1, 1)
-    c2h_new = x_new[2:3].reshape(-1, 1)
-    c2m_new = x_new[3:4].reshape(-1, 1)
-    c2w_new = x_new[4:5].reshape(-1, 1)
-    c2i_new = x_new[5:6].reshape(-1, 1)
-
-    p_i_new = calculate_partial_pressures(p_new, c2h_new, c2m_new, c2w_new, c2i_new)
-
-    y_new_samples = predict(
-        idata_old, T_new, p_i_new, key="posterior", num_samples=n_hyp_samples
-    ).reshape(-1, 1)
-    logger.debug(f"Generated {n_hyp_samples} hypothetical observations at new condition")
-
-    args_list = [
-        (x_old, y_old, x_new, idata_old, jnp.array(y_new_samples[i].reshape(1, 1)), use_vi)
-        for i in range(n_hyp_samples)
-    ]
-    n_procs = min(n_cores, n_hyp_samples)
-    with NestablePool(n_procs) as pool:
-        results = pool.map(_single_kl_worker, args_list)
-    logger.debug("Completed KL divergence computations in parallel")
-
-    klds = xarray.DataArray(
-        dims=["hyp_sample", "parameter"],
-        coords={
-            "hyp_sample": np.arange(n_hyp_samples),
-            "parameter": [
-                "k0", "Ea_k", "A_oh", "dH_oh",
-                "A_h2", "dH_h2", "A_mix", "dH_mix", "sigma_r",
-            ],
-        },
-        data=np.stack(results, axis=0),
-    )
-    return klds
-
-
 def koschany_design():
     proposals = [
         # T
-        [525, 540, 555, 585,
-         525, 540, 555, 585,
-         525, 540, 555, 585,
-         525, 540, 555, 585,
-         525, 540, 555, 585,
-         525, 540, 555, 585,
-         525, 540, 555, 585,
-         450, 475, 505,
-         450, 475, 505,
-         450, 475, 505,
-         450, 475, 505,
-         525, 540, 555, 585,
-         525, 540, 555, 585,
-         525, 540, 555, 585,
-         525, 540, 555, 585,
-         525, 540, 555, 585,
-         525, 540, 555, 585,
-         525, 540, 555, 585],
+        [
+            525,  # r61
+            540,
+            555,
+            585,
+            525,  # r62
+            540,
+            555,
+            585,
+            525,  # r63
+            540,
+            555,
+            585,
+            525,  # r64
+            540,
+            555,
+            585,
+            525,  # r65
+            540,
+            555,
+            585,
+            525,  # r66
+            540,
+            555,
+            585,
+            525,  # r67
+            540,
+            555,
+            585,
+            450,  # l41
+            475,
+            505,
+            450,  # l42
+            475,
+            505,
+            450,  # l43
+            475,
+            505,
+            450,  # l44
+            475,
+            505,
+            525,  # p91
+            540,
+            555,
+            585,
+            525,  # p62
+            540,
+            555,
+            585,
+            525,  # p33
+            540,
+            555,
+            585,
+            525,  # p9H2O1
+            540,
+            555,
+            585,
+            525,  # p6H2O2
+            540,
+            555,
+            585,
+            525,  # p3H2O3
+            540,
+            555,
+            585,
+        ],
         # p
-        [6, 6, 6, 6,
-         6, 6, 6, 6,
-         6, 6, 6, 6,
-         6, 6, 6, 6,
-         6, 6, 6, 6,
-         6, 6, 6, 6,
-         6, 6, 6, 6,
-         4, 4, 4,
-         4, 4, 4,
-         4, 4, 4,
-         4, 4, 4,
-         9, 9, 9, 9,
-         6, 6, 6, 6,
-         3, 3, 3, 3,
-         9, 9, 9, 9,
-         6, 6, 6, 6,
-         3, 3, 3, 3,
-         9, 9, 9, 9,
-         6, 6, 6, 6,
-         3, 3, 3, 3],
+        [
+            6,  # r61
+            6,
+            6,
+            6,
+            6,  # r62
+            6,
+            6,
+            6,
+            6,  # r63
+            6,
+            6,
+            6,
+            6,  # r64
+            6,
+            6,
+            6,
+            6,  # r65
+            6,
+            6,
+            6,
+            6,  # r66
+            6,
+            6,
+            6,
+            6,  # r67
+            6,
+            6,
+            6,
+            4,  # l41
+            4,
+            4,
+            4,  # l42
+            4,
+            4,
+            4,  # l43
+            4,
+            4,
+            4,  # l44
+            4,
+            4,
+            9,  # p91
+            9,
+            9,
+            9,
+            6,  # p62
+            6,
+            6,
+            6,
+            3,  # p33
+            3,
+            3,
+            3,
+            9,  # p9H2O1
+            9,
+            9,
+            9,
+            6,  # p6H2O2
+            6,
+            6,
+            6,
+            3,  # p3H2O3
+            3,
+            3,
+            3,
+        ],
         # C2H
-        [0.2, 0.2, 0.2, 0.2,
-         0.25, 0.25, 0.25, 0.25,
-         0.4, 0.4, 0.4, 0.4,
-         0.8, 0.8, 0.8, 0.8,
-         1.0, 1.0, 1.0, 1.0,
-         2.0, 2.0, 2.0, 2.0,
-         4.0, 4.0, 4.0, 4.0,
-         0.25, 0.25, 0.25,
-         0.66, 0.66, 0.66,
-         1.0, 1.0, 1.0,
-         1.5, 1.5, 1.5,
-         0.25, 0.25, 0.25, 0.25,
-         0.25, 0.25, 0.25, 0.25,
-         0.25, 0.25, 0.25, 0.25,
-         0.25, 0.25, 0.25, 0.25,
-         0.25, 0.25, 0.25, 0.25,
-         0.25, 0.25, 0.25, 0.25,
-         0.25, 0.25, 0.25, 0.25,
-         0.25, 0.25, 0.25, 0.25],
+        [
+            0.2,  # r61
+            0.2,
+            0.2,
+            0.2,
+            0.25,  # r62
+            0.25,
+            0.25,
+            0.25,
+            0.4,  # r63
+            0.4,
+            0.4,
+            0.4,
+            0.8,  # r64
+            0.8,
+            0.8,
+            0.8,
+            1.0,  # r65
+            1.0,
+            1.0,
+            1.0,
+            2.0,  # r66
+            2.0,
+            2.0,
+            2.0,
+            4.0,  # r67
+            4.0,
+            4.0,
+            4.0,
+            0.25,  # l41
+            0.25,
+            0.25,
+            0.66,  # l42
+            0.66,
+            0.66,
+            1.0,  # l43
+            1.0,
+            1.0,
+            1.5,  # l44
+            1.5,
+            1.5,
+            0.25,  # p91
+            0.25,
+            0.25,
+            0.25,
+            0.25,  # p62
+            0.25,
+            0.25,
+            0.25,
+            0.25,  # p33
+            0.25,
+            0.25,
+            0.25,
+            0.25,  # p9H2O1
+            0.25,
+            0.25,
+            0.25,
+            0.25,  # p6H2O2
+            0.25,
+            0.25,
+            0.25,
+            0.25,  # p3H2O3
+            0.25,
+            0.25,
+            0.25,
+        ],
         # C2M
-        [1000.0, 1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0,
-         0.800, 0.800, 0.800, 0.800,
-         0.800, 0.800, 0.800, 0.800,
-         0.800, 0.800, 0.800, 0.800],
+        [
+            1000.0,  # r61
+            1000.0,
+            1000.0,
+            1000.0,
+            1000.0,  # r62
+            1000.0,
+            1000.0,
+            1000.0,
+            1000.0,  # r63
+            1000.0,
+            1000.0,
+            1000.0,
+            1000.0,  # r64
+            1000.0,
+            1000.0,
+            1000.0,
+            1000.0,  # r65
+            1000.0,
+            1000.0,
+            1000.0,
+            1000.0,  # r66
+            1000.0,
+            1000.0,
+            1000.0,
+            1000.0,  # r67
+            1000.0,
+            1000.0,
+            1000.0,
+            1000.0,  # l41
+            1000.0,
+            1000.0,
+            1000.0,  # l42
+            1000.0,
+            1000.0,
+            1000.0,  # l43
+            1000.0,
+            1000.0,
+            1000.0,  # l44
+            1000.0,
+            1000.0,
+            1000.0,  # p91
+            1000.0,
+            1000.0,
+            1000.0,
+            1000.0,  # p62
+            1000.0,
+            1000.0,
+            1000.0,
+            1000.0,  # p33
+            1000.0,
+            1000.0,
+            1000.0,
+            0.800,  # p9H2O1
+            0.800,
+            0.800,
+            0.800,
+            0.800,  # p6H2O2
+            0.800,
+            0.800,
+            0.800,
+            0.800,  # p3H2O3
+            0.800,
+            0.800,
+            0.800,
+        ],
         # C2W
-        [1000.0, 1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0,
-         1000.0, 1000.0, 1000.0,
-         0.800, 0.800, 0.800, 0.800,
-         0.800, 0.800, 0.800, 0.800,
-         0.800, 0.800, 0.800, 0.800],
+        [
+            1000.0,  # r61
+            1000.0,
+            1000.0,
+            1000.0,
+            1000.0,  # r62
+            1000.0,
+            1000.0,
+            1000.0,
+            1000.0,  # r63
+            1000.0,
+            1000.0,
+            1000.0,
+            1000.0,  # r64
+            1000.0,
+            1000.0,
+            1000.0,
+            1000.0,  # r65
+            1000.0,
+            1000.0,
+            1000.0,
+            1000.0,  # r66
+            1000.0,
+            1000.0,
+            1000.0,
+            1000.0,  # r67
+            1000.0,
+            1000.0,
+            1000.0,
+            1000.0,  # l41
+            1000.0,
+            1000.0,
+            1000.0,  # l42
+            1000.0,
+            1000.0,
+            1000.0,  # l43
+            1000.0,
+            1000.0,
+            1000.0,  # l44
+            1000.0,
+            1000.0,
+            1000.0,  # p91
+            1000.0,
+            1000.0,
+            1000.0,
+            1000.0,  # p62
+            1000.0,
+            1000.0,
+            1000.0,
+            1000.0,  # p33
+            1000.0,
+            1000.0,
+            1000.0,
+            0.800,  # p9H2O1
+            0.800,
+            0.800,
+            0.800,
+            0.800,  # p6H2O2
+            0.800,
+            0.800,
+            0.800,
+            0.800,  # p3H2O3
+            0.800,
+            0.800,
+            0.800,
+        ],
         # c2i
-        [0.071, 0.071, 0.071, 0.071,
-         0.2, 0.2, 0.2, 0.2,
-         0.153, 0.153, 0.153, 0.153,
-         0.364, 0.364, 0.364, 0.364,
-         0.333, 0.333, 0.333, 0.333,
-         0.286, 0.286, 0.286, 0.286,
-         0.800, 0.800, 0.800, 0.800,
-         0.2, 0.2, 0.2,
-         0.4, 0.4, 0.4,
-         0.5, 0.5, 0.5,
-         0.6, 0.6, 0.6,
-         0.2, 0.2, 0.2, 0.2,
-         0.2, 0.2, 0.2, 0.2,
-         0.2, 0.2, 0.2, 0.2,
-         1.000, 1.000, 1.000, 1.000,
-         1.000, 1.000, 1.000, 1.000,
-         1.000, 1.000, 1.000, 1.000,
-         1.000, 1.000, 1.000, 1.000],
+        [
+            0.071,  # r61
+            0.071,
+            0.071,
+            0.071,
+            0.2,  # r62
+            0.2,
+            0.2,
+            0.2,
+            0.153,  # r63
+            0.153,
+            0.153,
+            0.153,
+            0.364,  # r64
+            0.364,
+            0.364,
+            0.364,
+            0.333,  # r65
+            0.333,
+            0.333,
+            0.333,
+            0.286,  # r66
+            0.286,
+            0.286,
+            0.286,
+            0.800,  # r67
+            0.800,
+            0.800,
+            0.800,
+            0.2,  # l41
+            0.2,
+            0.2,
+            0.4,  # l42
+            0.4,
+            0.4,
+            0.5,  # l43
+            0.5,
+            0.5,
+            0.6,  # l44
+            0.6,
+            0.6,
+            0.2,  # p91
+            0.2,
+            0.2,
+            0.2,
+            0.2,  # p62
+            0.2,
+            0.2,
+            0.2,
+            0.2,  # p33
+            0.2,
+            0.2,
+            0.2,
+            1.000,  # p9H2O1
+            1.000,
+            1.000,
+            1.000,
+            1.000,  # p6H2O2
+            1.000,
+            1.000,
+            1.000,
+            1.000,  # p3H2O3
+            1.000,
+            1.000,
+            1.000,
+        ],
     ]
     return jnp.array(proposals).T
 
 
 def run_single_workflow(args, seed: int, exp_id: str, base_save_path: Path):
     """Run the complete DOE workflow with a specific seed.
-    
+
     Args:
         args: Parsed command-line arguments
         seed: Random seed for this workflow run
         exp_id: Shared experiment ID for all seeds
         base_save_path: Base path (data/{EXP_ID}/)
-    
+
     Returns:
         Path to the seed-specific save directory
     """
     seed_save_path = base_save_path / f"seed{seed:03d}"
     seed_save_path.mkdir(parents=True, exist_ok=True)
-    
+
     num_workers = args.workers
     n_hyp_samples = args.KLsamples
     n_opt_iterations = args.optiterations
@@ -487,19 +546,6 @@ def run_single_workflow(args, seed: int, exp_id: str, base_save_path: Path):
         logger.info(f"{'='*70}")
 
         new_proposal = all_proposals[i : i + 1, :]
-
-        KLD_vals = mp_KL_divergence(
-            x_old=proposals,
-            y_old=r_obs,
-            x_new=new_proposal.squeeze(),
-            idata_old=prior_idata,
-            n_hyp_samples=n_hyp_samples,
-            n_cores=num_workers,
-            use_vi=True,
-        )
-        mean_KLD = KLD_vals.sum(axis=1).mean(axis=0).item()
-        std_KLD = KLD_vals.sum(axis=1).std(axis=0).item()
-
         proposals = jnp.concatenate([proposals, new_proposal], axis=0)
 
         T = proposals[:, 0:1]
@@ -527,14 +573,14 @@ def run_single_workflow(args, seed: int, exp_id: str, base_save_path: Path):
         prior_idata = idata.copy()
 
         trace_filename = seed_save_path / f"trace_{i:03d}.nc"
-        idata.to_netcdf(trace_filename)
+        idata.to_netcdf(str(trace_filename))
         logger.info(f"Saved trace to: {trace_filename.name}")
 
         trial_summary = {
             "iteration": i,
             "seed": seed,
             "observed": {"x": proposals.tolist(), "y": r_obs.tolist()},
-            "predicted_before_obs": {"expected_KLD": mean_KLD, "std_KLD": std_KLD},
+            "predicted_before_obs": {"expected_KLD": None, "std_KLD": None},
             "trace_path": str(trace_filename),
         }
         trials_sum.append(trial_summary)
@@ -558,7 +604,14 @@ def run_single_workflow(args, seed: int, exp_id: str, base_save_path: Path):
     logger.info(f"Total experiments conducted: {proposals.shape[0]}")
     logger.info(f"Results saved to: {seed_save_path}")
     logger.info(f"{'='*70}\n")
-    
+
+    # Drop large per-seed references before the next seed starts.
+    del idata, prior_idata, proposals, r_obs, trials_sum, all_proposals
+    gc.collect()
+    clear_caches = getattr(jax, "clear_caches", None)
+    if callable(clear_caches):
+        clear_caches()
+
     return seed_save_path
 
 
@@ -566,33 +619,38 @@ def main(args):
     """Run workflow for multiple seeds with shared EXP_ID."""
     base_seed = args.seed
     n_seeds = args.n_seeds
-    
+
     global EXP_ID
     EXP_ID = namer.generate()
-    
-    base_save_path = Path.cwd() / "data" / f"{EXP_ID}"
+
+    base_save_path = Path("/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace") / "data" / f"{EXP_ID}"
     base_save_path.mkdir(parents=True, exist_ok=True)
-    
+
     logger.info(f"Starting multi-seed workflow")
     logger.info(f"  Base seed: {base_seed}")
     logger.info(f"  Number of seeds: {n_seeds}")
     logger.info(f"  Experiment ID: {EXP_ID}")
     logger.info(f"  Base path: {base_save_path}")
-    
+
     all_save_paths = []
     seeds_used = []
-    
+
     for seed_offset in range(n_seeds):
         seed = base_seed + seed_offset
         seeds_used.append(seed)
         logger.info(f"\n{'#'*70}")
         logger.info(f"# STARTING SEED {seed_offset + 1}/{n_seeds}: SEED={seed}")
         logger.info(f"{'#'*70}\n")
-        
+
         seed_save_path = run_single_workflow(args, seed, EXP_ID, base_save_path)
         all_save_paths.append(seed_save_path)
         logger.info(f"Completed workflow with seed {seed}")
-    
+
+        gc.collect()
+        clear_caches = getattr(jax, "clear_caches", None)
+        if callable(clear_caches):
+            clear_caches()
+
     master_summary = {
         "experiment_id": EXP_ID,
         "base_seed": base_seed,
@@ -605,7 +663,7 @@ def main(args):
     master_summary_file = base_save_path / "multi_seed_summary.json"
     with open(master_summary_file, "w") as f:
         json.dump(master_summary, f, indent=2)
-    
+
     logger.info(f"\n{'='*70}")
     logger.info("ALL WORKFLOWS COMPLETE")
     logger.info(f"{'='*70}")

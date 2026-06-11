@@ -20,6 +20,8 @@ Key Features:
 - Integration with Ax platform for Bayesian optimization
 """
 
+import gc
+import gc
 import json
 import argparse
 from pathlib import Path
@@ -105,7 +107,7 @@ parser.add_argument(
 parser.add_argument(
     "--seed",
     type=int,
-    default=42,
+    default=43,
     help="Base random seed for reproducible workflow execution",
 )
 parser.add_argument(
@@ -564,6 +566,13 @@ def run_single_workflow(args, seed: int, exp_id: str, base_save_path: Path):
     logger.info(f"Results saved to: {seed_save_path}")
     logger.info(f"{'='*70}\n")
     
+    # Drop large per-seed references before the next seed starts.
+    del idata, prior_idata, proposals, r_obs, trials_sum, all_proposals
+    gc.collect()
+    clear_caches = getattr(jax, "clear_caches", None)
+    if callable(clear_caches):
+        clear_caches()
+
     return seed_save_path
 
 
@@ -574,7 +583,7 @@ def main(args):
     global EXP_ID
     EXP_ID = namer.generate()
     
-    base_save_path = Path.cwd() / "data" / f"{EXP_ID}"
+    base_save_path = Path("/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace")  / "data" / f"{EXP_ID}"
     base_save_path.mkdir(parents=True, exist_ok=True)
     
     logger.info(f"Starting multi-seed workflow")
@@ -596,6 +605,12 @@ def main(args):
         seed_save_path = run_single_workflow(args, seed, EXP_ID, base_save_path)
         all_save_paths.append(seed_save_path)
         logger.info(f"Completed workflow with seed {seed}")
+
+        # Drop large per-seed references before the next seed starts.
+        gc.collect()
+        clear_caches = getattr(jax, "clear_caches", None)
+        if callable(clear_caches):
+            clear_caches()
     
     master_summary = {
         "experiment_id": EXP_ID,
