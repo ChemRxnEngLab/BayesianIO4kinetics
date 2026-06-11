@@ -1,0 +1,27 @@
+{
+  "experiment_id": "verdant-stack",
+  "base_seed": 43,
+  "n_seeds": 4,
+  "seeds_used": [
+    43,
+    44,
+    45,
+    46
+  ],
+  "seed_paths": {
+    "43": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/verdant-stack/seed043",
+    "44": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/verdant-stack/seed044",
+    "45": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/verdant-stack/seed045",
+    "46": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/verdant-stack/seed046"
+  },
+  "timestamp": "2026-06-10 16:47:34.724413",
+  "args": {
+    "workers": 12,
+    "KLsamples": 12,
+    "iterations": 32,
+    "optiterations": 10,
+    "trialsperiteration": 2,
+    "seed": 43,
+    "n_seeds": 4
+  }
+}
