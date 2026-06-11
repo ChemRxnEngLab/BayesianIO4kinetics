@@ -17,6 +17,7 @@ Key Features:
 - Integration with Ax platform for Bayesian optimization
 """
 
+import gc
 import json
 import argparse
 from pathlib import Path
@@ -163,7 +164,11 @@ def KL_divergence(
     p_i_new = calculate_partial_pressures(p_new, c2h_new, c2m_new, c2w_new, c2i_new)
 
     y_new_samples = predict(
-        idata_old, T_new, p_i_new, key="posterior", num_samples=n_hyp_samples
+        idata_old,
+        T_new,
+        p_i_new,
+        key="posterior",
+        num_samples=n_hyp_samples,
     ).reshape(-1, 1)
     logger.debug(
         f"Generated {n_hyp_samples} hypothetical observations at new condition"
@@ -191,10 +196,14 @@ def KL_divergence(
     for i in range(n_hyp_samples):
         logger.debug(f"Processing hypothetical sample {i+1}/{n_hyp_samples}")
 
+        # Get the i-th hypothetical observation
         y_hyp = jnp.array(y_new_samples[i].reshape(1, 1))
+
+        # Create augmented dataset: combine current data with hypothetical observation
         x_augmented = jnp.vstack([x_old, x_new.reshape(1, -1)])
         y_augmented = jnp.vstack([y_old, y_hyp])
 
+        # Extract conditions and generate synthetic data structure
         T_aug = x_augmented[:, 0:1]
         p_aug = x_augmented[:, 1:2]
         c2h_aug = x_augmented[:, 2:3]
@@ -202,17 +211,20 @@ def KL_divergence(
         c2w_aug = x_augmented[:, 4:5]
         c2i_aug = x_augmented[:, 5:6]
 
+        # Calculate partial pressures for augmented data
         p_i_aug = calculate_partial_pressures(p_aug, c2h_aug, c2m_aug, c2w_aug, c2i_aug)
 
+        # Sample from the new posterior (with augmented data)
         idata_new = run_inference(
             T_aug,
             p_i_aug,
             y_augmented,
-            num_samples=4000,
-            num_warmup=1000,
+            num_samples=4000, 
+            num_warmup=1000, 
             num_chains=2,
         )
 
+        # Step 3: Compute KL divergence between posteriors
         klds_i = kl_divergence_between_models(
             idata_new,
             idata_old,
@@ -233,15 +245,22 @@ def KL_divergence(
         )
         klds.loc[i, :] = klds_i
 
+    # Step 4: Return KL divergences across all hypothetical samples
     return klds
 
 
 def _single_kl_worker(args):
+    """
+    Worker function for computing KL divergence for a single hypothetical observation.
+    Must be at top level for multiprocessing on Windows.
+    """
     x_old, y_old, x_new, idata_old, y_hyp, use_vi = args
 
+    # Create augmented dataset
     x_augmented = jnp.vstack([x_old, x_new.reshape(1, -1)])
     y_augmented = jnp.vstack([y_old, y_hyp])
 
+    # Extract conditions
     T_aug = x_augmented[:, 0:1]
     p_aug = x_augmented[:, 1:2]
     c2h_aug = x_augmented[:, 2:3]
@@ -249,17 +268,20 @@ def _single_kl_worker(args):
     c2w_aug = x_augmented[:, 4:5]
     c2i_aug = x_augmented[:, 5:6]
 
+    # Calculate partial pressures
     p_i_aug = calculate_partial_pressures(p_aug, c2h_aug, c2m_aug, c2w_aug, c2i_aug)
 
+    # Run inference on augmented data
     idata_new = run_inference(
         T_aug,
         p_i_aug,
         y_augmented,
-        num_samples=4000,
-        num_warmup=1000,
+        num_samples=4000,  
+        num_warmup=1000,  
         num_chains=2,
     )
 
+    # Compute KL divergence
     klds_i = kl_divergence_between_models(
         idata_new,
         idata_old,
@@ -281,7 +303,12 @@ def _single_kl_worker(args):
     return klds_i
 
 
-def _candidate_kl_worker(args):
+def _candidate_kl_worker(
+    args: tuple[
+        jnp.ndarray, jnp.ndarray, jnp.ndarray, az.InferenceData, int, int, bool
+    ],
+):
+    """Top-level worker for parallelizing over candidate proposals."""
     x_old, y_old, x_new, idata_old, n_hyp_samples, n_cores, use_vi = args
     return mp_KL_divergence(
         x_old=x_old,
@@ -298,11 +325,27 @@ def mp_KL_divergence(
     x_old: jnp.ndarray,
     y_old: jnp.ndarray,
     x_new: jnp.ndarray,
-    idata_old: xarray.DataTree,
+    idata_old: az.InferenceData,
     n_hyp_samples: int = 5,
     n_cores: int = 4,
     use_vi: bool = True,
 ):
+    """
+    Compute KL divergence in parallel across multiple hypothetical observations.
+
+    Args:
+        x_old: Current experimental conditions (n_current, 5)
+        y_old: Current observations (n_current, 1)
+        x_new: New experimental condition to test (5,)
+        idata_old: Current posterior samples
+        n_hyp_samples: Number of hypothetical observations
+        n_cores: Number of parallel workers
+        use_vi: If True, use VI (fast); if False, use MCMC (accurate)
+
+    Returns:
+        xarray.DataArray of KL divergences
+    """
+    # Extract conditions from x_new
     T_new = x_new[0:1].reshape(-1, 1)
     p_new = x_new[1:2].reshape(-1, 1)
     c2h_new = x_new[2:3].reshape(-1, 1)
@@ -310,15 +353,22 @@ def mp_KL_divergence(
     c2w_new = x_new[4:5].reshape(-1, 1)
     c2i_new = x_new[5:6].reshape(-1, 1)
 
+    # Calculate partial pressures
     p_i_new = calculate_partial_pressures(p_new, c2h_new, c2m_new, c2w_new, c2i_new)
 
+    # Step 1: Generate hypothetical observations at the new experimental condition
     y_new_samples = predict(
-        idata_old, T_new, p_i_new, key="posterior", num_samples=n_hyp_samples
+        idata_old,
+        T_new,
+        p_i_new,
+        key="posterior",
+        num_samples=n_hyp_samples,
     ).reshape(-1, 1)
     logger.debug(
         f"Generated {n_hyp_samples} hypothetical observations at new condition"
     )
 
+    # Step 2: Compute KL divergence for each hypothetical observation in parallel
     args_list = [
         (
             x_old,
@@ -353,6 +403,8 @@ def mp_KL_divergence(
         },
         data=np.stack(results, axis=0),
     )
+
+    # Step 4: Return KL divergences across all hypothetical samples
     return klds
 
 
@@ -360,22 +412,64 @@ def sp_find_opt_candidate(
     n_iterations: int,
     proposals: jnp.ndarray,
     r_obs: jnp.ndarray,
-    idata: xarray.DataTree,
+    idata: az.InferenceData,
     n_hyp_samples: int,
     n_workers: int,
     filename: str,
     use_vi: bool = True,
 ):
+    """
+    Sequential optimization to find optimal experimental candidate.
+
+    Args:
+        n_iterations: Number of optimization iterations
+        proposals: Current experimental conditions (n_current, 5)
+        r_obs: Current observations (n_current, 1)
+        idata: Current posterior samples
+        n_hyp_samples: Number of hypothetical observations per candidate
+        n_workers: Number of parallel workers
+        filename: Path to save optimization results
+        use_vi: If True, use VI; if False, use MCMC
+
+    Returns:
+        Tuple of (best_parameters, expected_KLD, index, name)
+    """
     client = Client()
     parameters = [
-        RangeParameterConfig(name="T", parameter_type="float", bounds=(450.0, 600.0)),
-        RangeParameterConfig(name="p", parameter_type="float", bounds=(3.0, 9.0)),
-        RangeParameterConfig(name="c2h", parameter_type="float", bounds=(0.2, 4.0)),
-        RangeParameterConfig(name="c2m", parameter_type="float", bounds=(0.5, 1000.0)),
-        RangeParameterConfig(name="c2w", parameter_type="float", bounds=(0.5, 1000.0)),
-        RangeParameterConfig(name="c2i", parameter_type="float", bounds=(0.05, 1.0)),
+        RangeParameterConfig(
+            name="T",
+            parameter_type="float",
+            bounds=(450.0, 600.0),
+        ),
+        RangeParameterConfig(
+            name="p",
+            parameter_type="float",
+            bounds=(3.0, 9.0),
+        ),
+        RangeParameterConfig(
+            name="c2h",
+            parameter_type="float",
+            bounds=(0.2, 4.0),
+        ),
+        RangeParameterConfig(
+            name="c2m",
+            parameter_type="float",
+            bounds=(0.5, 1000.0),
+        ),
+        RangeParameterConfig(
+            name="c2w",
+            parameter_type="float",
+            bounds=(0.5, 1000.0),
+        ),
+        RangeParameterConfig(
+            name="c2i",
+            parameter_type="float",
+            bounds=(0.05, 1.0),
+        ),
     ]
-    client.configure_experiment(parameters=parameters)
+    client.configure_experiment(
+        parameters=parameters,
+    )
     client.configure_optimization(objective="KLD")
     for _ in range(n_iterations):
         trials = client.get_next_trials(max_trials=1)
@@ -388,7 +482,7 @@ def sp_find_opt_candidate(
                     parameters["c2m"],
                     parameters["c2w"],
                     parameters["c2i"],
-                ]
+                ],
             )
             KLD_vals = mp_KL_divergence(
                 proposals,
@@ -419,22 +513,67 @@ def mp_find_opt_candidate(
     n_trials_per_iter: int,
     proposals: jnp.ndarray,
     r_obs: jnp.ndarray,
-    idata: xarray.DataTree,
+    idata: az.InferenceData,
     n_hyp_samples: int,
     n_workers: int,
     filename: Path,
     use_vi: bool = True,
 ):
+    """
+    Parallel optimization to find optimal experimental candidate.
+
+    Evaluates multiple candidates in parallel within each iteration.
+
+    Args:
+        n_iterations: Number of optimization iterations
+        n_trials_per_iter: Number of candidates to evaluate in parallel per iteration
+        proposals: Current experimental conditions (n_current, 6)
+        r_obs: Current observations (n_current, 1)
+        idata: Current posterior samples
+        n_hyp_samples: Number of hypothetical observations per candidate
+        n_workers: Number of parallel workers for KL computation
+        filename: Path to save optimization results
+        use_vi: If True, use VI; if False, use MCMC
+
+    Returns:
+        Tuple of (best_parameters, expected_KLD, index, name)
+    """
     client = Client()
     parameters = [
-        RangeParameterConfig(name="T", parameter_type="float", bounds=(450.0, 600.0)),
-        RangeParameterConfig(name="p", parameter_type="float", bounds=(3.0, 9.0)),
-        RangeParameterConfig(name="c2h", parameter_type="float", bounds=(0.2, 4.0)),
-        RangeParameterConfig(name="c2m", parameter_type="float", bounds=(0.5, 1000.0)),
-        RangeParameterConfig(name="c2w", parameter_type="float", bounds=(0.5, 1000.0)),
-        RangeParameterConfig(name="c2i", parameter_type="float", bounds=(0.05, 1.0)),
+        RangeParameterConfig(
+            name="T",
+            parameter_type="float",
+            bounds=(450.0, 600.0),
+        ),
+        RangeParameterConfig(
+            name="p",
+            parameter_type="float",
+            bounds=(3.0, 9.0),
+        ),
+        RangeParameterConfig(
+            name="c2h",
+            parameter_type="float",
+            bounds=(0.2, 4.0),
+        ),
+        RangeParameterConfig(
+            name="c2m",
+            parameter_type="float",
+            bounds=(0.5, 1000.0),
+        ),
+        RangeParameterConfig(
+            name="c2w",
+            parameter_type="float",
+            bounds=(0.5, 1000.0),
+        ),
+        RangeParameterConfig(
+            name="c2i",
+            parameter_type="float",
+            bounds=(0.05, 1.0),
+        ),
     ]
-    client.configure_experiment(parameters=parameters)
+    client.configure_experiment(
+        parameters=parameters,
+    )
     client.configure_optimization(objective="KLD")
     for _ in range(n_iterations):
         trials = client.get_next_trials(max_trials=n_trials_per_iter)
@@ -449,11 +588,12 @@ def mp_find_opt_candidate(
                     parameters["c2m"],
                     parameters["c2w"],
                     parameters["c2i"],
-                ]
+                ],
             )
             candidates.append(candidate)
             indeces.append(trial_idx)
 
+        # Prepare arguments for parallel execution
         args_list = [
             (proposals, r_obs, candidate, idata, n_hyp_samples, n_workers, use_vi)
             for candidate in candidates
@@ -519,6 +659,7 @@ def run_single_workflow(args, seed: int, exp_id: str, base_save_path: Path):
         use_vi=True,
     )
 
+    # Initialize with first proposal
     proposals = jnp.array(
         [
             [
@@ -529,7 +670,7 @@ def run_single_workflow(args, seed: int, exp_id: str, base_save_path: Path):
                 best_parameters["c2w"],
                 best_parameters["c2i"],
             ]
-        ]
+        ],
     )
 
     logger.info(
@@ -544,6 +685,7 @@ def run_single_workflow(args, seed: int, exp_id: str, base_save_path: Path):
         logger.info(f"[ITERATION {i}/{n_iterations}] [Seed: {seed}]")
         logger.info(f"{'='*70}")
 
+        # Extract experimental conditions
         T = proposals[:, 0:1]
         p = proposals[:, 1:2]
         c2h = proposals[:, 2:3]
@@ -557,13 +699,14 @@ def run_single_workflow(args, seed: int, exp_id: str, base_save_path: Path):
         )
         logger.debug(f"Observed rates: min={r_obs.min():.2e}, max={r_obs.max():.2e}")
 
+        # Run Bayesian inference (Variational Inference for speed)
         logger.info("Running MCMC inference...")
         idata = run_inference(
             T=T,
             p_i=p_i,
             r_obs=r_obs,
             num_samples=4000,
-            num_warmup=4000,
+            num_warmup=4000, 
             num_chains=8,
         )
 
@@ -584,6 +727,7 @@ def run_single_workflow(args, seed: int, exp_id: str, base_save_path: Path):
             use_vi=True,
         )
 
+        # Add new proposal to list
         new_proposal = jnp.array(
             [
                 [
@@ -594,7 +738,7 @@ def run_single_workflow(args, seed: int, exp_id: str, base_save_path: Path):
                     best_parameters["c2w"],
                     best_parameters["c2i"],
                 ]
-            ]
+            ],
         )
         proposals = jnp.concatenate([proposals, new_proposal], axis=0)
 
@@ -606,10 +750,14 @@ def run_single_workflow(args, seed: int, exp_id: str, base_save_path: Path):
         )
         logger.info(f"  Expected KLD: {expected_KLD['KLD'][0]:.4e}")
 
+        # Store iteration summary
         trial_summary = {
             "iteration": i,
             "seed": seed,
-            "observed": {"x": proposals[:-1].tolist(), "y": r_obs.tolist()},
+            "observed": {
+                "x": proposals[:-1].tolist(),  # All proposals except the new one
+                "y": r_obs.tolist(),
+            },
             "next_proposal": {
                 "x": new_proposal.tolist()[0],
                 "expected_KLD": float(expected_KLD["KLD"][0]),
@@ -643,6 +791,13 @@ def run_single_workflow(args, seed: int, exp_id: str, base_save_path: Path):
     logger.info(f"Results saved to: {seed_save_path}")
     logger.info(f"{'='*70}\n")
 
+    # Drop large per-seed references before the next seed starts.
+    del idata, prior_idata, proposals, r_obs, trials_sum, all_proposals
+    gc.collect()
+    clear_caches = getattr(jax, "clear_caches", None)
+    if callable(clear_caches):
+        clear_caches()
+
     return seed_save_path
 
 
@@ -653,7 +808,7 @@ def main(args):
     global EXP_ID
     EXP_ID = namer.generate()
 
-    base_save_path = Path.cwd() / "data" / f"{EXP_ID}"
+    base_save_path = Path("/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace")  / "data" / f"{EXP_ID}"
     base_save_path.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Starting multi-seed workflow")
@@ -675,6 +830,11 @@ def main(args):
         seed_save_path = run_single_workflow(args, seed, EXP_ID, base_save_path)
         all_save_paths.append(seed_save_path)
         logger.info(f"Completed workflow with seed {seed}")
+
+        gc.collect()
+        clear_caches = getattr(jax, "clear_caches", None)
+        if callable(clear_caches):
+            clear_caches()
 
     master_summary = {
         "experiment_id": EXP_ID,
