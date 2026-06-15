@@ -27,4 +27,4 @@ unset PIP_TARGET
 source ./numpyroenv/bin/activate
 # export PYTHONPATH="${PYTHONPATH}:./lib"
 
-python3 HSA_H_003.py --n-seeds 4
+python3 HSA_H_003.py --n-seeds 4 --seed 44
