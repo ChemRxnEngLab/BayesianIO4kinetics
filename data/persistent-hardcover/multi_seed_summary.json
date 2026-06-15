@@ -1,0 +1,31 @@
+{
+  "experiment_id": "persistent-hardcover",
+  "base_seed": 43,
+  "n_seeds": 5,
+  "seeds_used": [
+    43,
+    44,
+    45,
+    46,
+    47
+  ],
+  "seed_paths": {
+    "43": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/persistent-hardcover/seed043",
+    "44": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/persistent-hardcover/seed044",
+    "45": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/persistent-hardcover/seed045",
+    "46": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/persistent-hardcover/seed046",
+    "47": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/persistent-hardcover/seed047"
+  },
+  "timestamp": "2026-06-12 04:22:12.076380",
+  "args": {
+    "workers": 12,
+    "KLsamples": 12,
+    "iterations": 32,
+    "optiterations": 10,
+    "trialsperiteration": 2,
+    "acquisition": "predictive",
+    "ntestpoints": 20,
+    "seed": 43,
+    "n_seeds": 5
+  }
+}
