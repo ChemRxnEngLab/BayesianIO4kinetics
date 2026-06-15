@@ -3,12 +3,14 @@
   "base_seed": 43,
   "n_seeds": 4,
   "seeds_used": [
+    42,
     43,
     44,
     45,
     46
   ],
   "seed_paths": {
+    "42": "symlink",
     "43": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/verdant-stack/seed043",
     "44": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/verdant-stack/seed044",
     "45": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/verdant-stack/seed045",
