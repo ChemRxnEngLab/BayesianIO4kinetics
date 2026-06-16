@@ -1,0 +1,27 @@
+{
+  "experiment_id": "quality-tribute",
+  "base_seed": 43,
+  "n_seeds": 5,
+  "seeds_used": [
+    43,
+    44,
+    45,
+    46,
+    47
+  ],
+  "seed_paths": {
+    "43": "/lustre/home/ul/ul_cheming/ul_qmj36/BIBO/data/quality-tribute/seed043",
+    "44": "/lustre/home/ul/ul_cheming/ul_qmj36/BIBO/data/quality-tribute/seed044",
+    "45": "/lustre/home/ul/ul_cheming/ul_qmj36/BIBO/data/quality-tribute/seed045",
+    "46": "/lustre/home/ul/ul_cheming/ul_qmj36/BIBO/data/quality-tribute/seed046",
+    "47": "/lustre/home/ul/ul_cheming/ul_qmj36/BIBO/data/quality-tribute/seed047"
+  },
+  "timestamp": "2026-06-15 17:02:35.588800",
+  "args": {
+    "iterations": 8,
+    "optiterations": 15,
+    "trialsperiteration": 1,
+    "seed": 43,
+    "n_seeds": 5
+  }
+}
