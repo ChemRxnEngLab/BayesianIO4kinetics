@@ -6,7 +6,7 @@ import logging
 import itertools
 import json
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Optional, Iterator
 import arviz as az
 import numpy as np
 from scipy.stats import qmc
@@ -77,14 +77,14 @@ parser.add_argument(
 
 models = ["Mo1", "Mo2", "Mo3", "Mo4"]
 
-predict_funs = {
+predict_funs: dict[str, Callable] = {
     "Mo1": predict_Mo1,
     "Mo2": predict_Mo2,
     "Mo3": predict_Mo3,
     "Mo4": predict_Mo4,
 }
 
-inference_funs = {
+inference_funs: dict[str, Callable] = {
     "Mo1": run_inference_Mo1,
     "Mo2": run_inference_Mo2,
     "Mo3": run_inference_Mo3,
@@ -189,9 +189,9 @@ def calculate_disagreement(
         c2i_cand,
     )
 
-    r_preds = []
+    r_preds:list[jnp.ndarray] = []
     for Mo in models:
-        r_pred = predict_funs[Mo](
+        r_pred: jnp.ndarray = predict_funs[Mo](
             idata=idatas[models.index(Mo)],
             T=T_cand,
             p_i=pi_cand,
@@ -201,8 +201,8 @@ def calculate_disagreement(
         r_preds.append(r_pred)
 
     # calculate the pairwise JSDs and add them up
-    pairwise_models = itertools.combinations(r_preds, 2)
-    pairwise_disagreements = []
+    pairwise_models: Iterator[tuple[jnp.ndarray, ...]] = itertools.combinations(r_preds, 2)
+    pairwise_disagreements:list[jnp.ndarray] = []
     for r_pred1, r_pred2 in pairwise_models:
         pairwise_disagreements_over_t = JSD_between_predictions(
             r_pred1, r_pred2
@@ -258,15 +258,15 @@ def find_opt_candidate(
     client.configure_optimization(objective="disagreement")
     for _ in range(n_iterations):
         trials = client.get_next_trials(max_trials=n_trials_per_iter)
-        for trial_idx, parameters in trials.items():
+        for trial_idx, trial_parameters in trials.items():
             candidate = jnp.array(
                 [
-                    parameters["T"],
-                    parameters["p"],
-                    parameters["c2h"],
-                    parameters["c2m"],
-                    parameters["c2w"],
-                    parameters["c2i"],
+                    trial_parameters["T"], #type: ignore
+                    trial_parameters["p"], #type: ignore
+                    trial_parameters["c2h"], #type: ignore
+                    trial_parameters["c2m"], #type: ignore
+                    trial_parameters["c2w"], #type: ignore
+                    trial_parameters["c2i"], #type: ignore
                 ],
             )
             disagreement = calculate_disagreement(idatas, candidate)
@@ -281,7 +281,7 @@ def find_opt_candidate(
     return best_parameters, objective, index, name
 
 
-def LHSDOE(n_obs: int, seed: int = None):
+def LHSDOE(n_obs: int, seed: Optional[int] = None):
     sampler = qmc.LatinHypercube(d=6, seed=seed)
     sample = sampler.random(n_obs)
 
@@ -295,6 +295,18 @@ def LHSDOE(n_obs: int, seed: int = None):
 
     proposals = jnp.column_stack([T_lhs, p_lhs, c2h_lhs, c2m_lhs, c2w_lhs, c2i_lhs])
     return proposals
+
+def _single_runner(args):
+    Mo, T_obs, p_obs,r_obs = args
+    idata = inference_funs[Mo](
+        T_obs,
+        p_obs,
+        r_obs,
+        num_warmup=4000,
+        num_samples=4000,
+        num_chains=8,
+    )
+    return idata
 
 
 def run_single_workflow(args, seed: int, exp_id: str, base_save_path: Path):
@@ -347,17 +359,11 @@ def run_single_workflow(args, seed: int, exp_id: str, base_save_path: Path):
     )
 
     # Run all specified models in parallel
+    argslist = [(Mo, T_obs, p_obs, r_obs) for Mo in models]
     with NestablePool(4) as pool:
-        idatas = pool.starmap(
-            lambda Mo: inference_funs[Mo](
-                T_obs,
-                p_obs,
-                r_obs,
-                num_warmup=4000,
-                num_samples=4000,
-                num_chains=8,
-            ),
-            models,
+        idatas = pool.map(
+            _single_runner,
+            argslist,
         )
     for Mo, idata in zip(models, idatas):
         trace_filename = seed_save_path / f"{Mo}_trace_000.nc"
@@ -417,17 +423,11 @@ def run_single_workflow(args, seed: int, exp_id: str, base_save_path: Path):
         )
 
         # Run all specified models in parallel
+        argslist = [(Mo, T_obs, p_obs, r_obs) for Mo in models]
         with NestablePool(4) as pool:
-            idatas = pool.starmap(
-                lambda Mo: inference_funs[Mo](
-                    T_obs,
-                    p_obs,
-                    r_obs,
-                    num_warmup=4000,
-                    num_samples=4000,
-                    num_chains=8,
-                ),
-                models,
+            idatas = pool.map(
+                _single_runner,
+                argslist,
             )
         for Mo, idata in zip(models, idatas):
             trace_filename = seed_save_path / f"{Mo}_trace_{i:03d}.nc"
@@ -470,14 +470,13 @@ def run_single_workflow(args, seed: int, exp_id: str, base_save_path: Path):
     logger.info(f"{'='*70}\n")
 
     # Drop large per-seed references before the next seed starts.
-    del idata, prior_idata, proposals, r_obs, trials_sum, all_proposals
+    del idata, proposals, r_obs, trials_sum
     gc.collect()
     clear_caches = getattr(jax, "clear_caches", None)
     if callable(clear_caches):
         clear_caches()
 
     return seed_save_path
-
 
 def main(args):
     base_seed = args.seed
