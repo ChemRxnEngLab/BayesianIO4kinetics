@@ -1,0 +1,25 @@
+{
+  "experiment_id": "strong-cartwheel",
+  "base_seed": 42,
+  "n_seeds": 5,
+  "seeds_used": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "seed_paths": {
+    "42": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/strong-cartwheel/seed042",
+    "43": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/strong-cartwheel/seed043",
+    "44": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/strong-cartwheel/seed044",
+    "45": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/strong-cartwheel/seed045",
+    "46": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/strong-cartwheel/seed046"
+  },
+  "timestamp": "2026-06-15 18:02:57.298430",
+  "args": {
+    "iterations": 64,
+    "seed": 42,
+    "n_seeds": 5
+  }
+}
