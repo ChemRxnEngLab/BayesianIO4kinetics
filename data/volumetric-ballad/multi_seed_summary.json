@@ -1,0 +1,29 @@
+{
+  "experiment_id": "volumetric-ballad",
+  "base_seed": 42,
+  "n_seeds": 5,
+  "seeds_used": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "seed_paths": {
+    "42": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/volumetric-ballad/seed042",
+    "43": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/volumetric-ballad/seed043",
+    "44": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/volumetric-ballad/seed044",
+    "45": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/volumetric-ballad/seed045",
+    "46": "/lustre/work/ws/ws1/ul_qmj36-BIBO_workspace/data/volumetric-ballad/seed046"
+  },
+  "timestamp": "2026-06-15 15:56:10.022404",
+  "args": {
+    "workers": 12,
+    "KLsamples": 12,
+    "iterations": 32,
+    "optiterations": 10,
+    "trialsperiteration": 2,
+    "seed": 42,
+    "n_seeds": 5
+  }
+}
