@@ -221,10 +221,10 @@ def bayesian_model(
     """
     # Sample kinetic parameters from priors
     k0 = numpyro.sample("k0", dist.LogNormal(-8, 0.8)) 
-    Ea_k = numpyro.sample("Ea_k", dist.Normal(70000, 7500))
+    Ea_k = numpyro.sample("Ea_k", dist.Normal(75000, 2500))
 
     A_oh = numpyro.sample("A_oh", dist.LogNormal(-1.0, 0.5))
-    dH_oh = numpyro.sample("dH_oh", dist.Normal(10000,2000))
+    dH_oh = numpyro.sample("dH_oh", dist.Normal(20000, 2000))
 
     A_h2 = numpyro.sample("A_h2", dist.LogNormal(-1.0, 0.5))
     dH_h2 = numpyro.sample("dH_h2", dist.Normal(-10000, 2000))
