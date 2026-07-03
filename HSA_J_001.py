@@ -161,7 +161,7 @@ def JSD_between_predictions(
 
 
 def calculate_disagreement(
-    idatas: list[az.InferenceData],
+    idatas: list[xarray.DataTree],
     candidate: jnp.ndarray,
     num_samples: int = 1000,
 ) -> jnp.ndarray:
@@ -216,7 +216,7 @@ def calculate_disagreement(
 def find_opt_candidate(
     n_iterations: int,
     n_trials_per_iter: int,
-    idatas: list[az.InferenceData],
+    idatas: list[xarray.DataTree],
     filename: str,
 ):
     client = Client()

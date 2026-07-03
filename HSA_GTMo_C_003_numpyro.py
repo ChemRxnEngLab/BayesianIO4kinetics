@@ -306,7 +306,7 @@ def generate_synthetic_data(
 
 
 def predict(
-    idata: az.InferenceData,
+    idata: xarray.DataTree,
     T: jnp.ndarray,
     p_i: jnp.ndarray,
     num_samples: int = 25,

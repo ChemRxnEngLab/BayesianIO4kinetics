@@ -110,7 +110,7 @@ def run_inference(
     num_warmup: int = 1000,
     num_chains: int = 4,
     progressbar: bool = False,
-) -> az.InferenceData:
+) -> xarray.DataTree:
     """
     Run MCMC inference to estimate kinetic parameters.
 
@@ -167,7 +167,7 @@ def run_inference(
 # For variational inference, use numpyro.infer.SVI with custom guides
 
 
-def sample_prior(num_samples: int = 1000) -> az.InferenceData:
+def sample_prior(num_samples: int = 1000) -> xarray.DataTree:
     """
     Sample from the prior distribution.
 
@@ -193,12 +193,12 @@ def sample_prior(num_samples: int = 1000) -> az.InferenceData:
 
 
 def sample_posterior(
-    idata: az.InferenceData,
+    idata: xarray.DataTree,
     T: jnp.ndarray,
     p_i: jnp.ndarray,
     num_samples: int = 1000,
     r_obs: Optional[jnp.ndarray] = None,
-) -> az.InferenceData:
+) -> xarray.DataTree:
     """
     Sample from the posterior distribution using Predictive.
 
@@ -232,14 +232,16 @@ def sample_posterior(
     }
 
     if r_obs is None:
-        obs_data_dict = None
+        obs_data_dict = {"r": None}
     else:
         obs_data_dict = {"r": np.array(r_obs)}
 
     idata = az.from_dict(
-        posterior=None,
-        posterior_predictive=posterior_predictive_dict,
-        observed_data=obs_data_dict,
+        {
+            # "posterior": {},
+            "posterior_predictive": posterior_predictive_dict,
+            "observed_data": obs_data_dict,
+        },
         dims={
             "r_lat": ["chain", "draw", "obs", "times", "components"],
         },
@@ -248,7 +250,7 @@ def sample_posterior(
 
 
 def validate_against_holdout(
-    idata: az.InferenceData,
+    idata: xarray.DataTree,
     holdout: xarray.Dataset,
     num_samples: int = 1000,
 ):
@@ -259,24 +261,25 @@ def validate_against_holdout(
         num_samples=num_samples,
     )
 
-    post_data.add_groups(
-        {
-            "observed_data": {
-                "r": jnp.permute_dims(
+    observed_data = xarray.Dataset(
+        data_vars= {
+            "r": (
+                ["chain", "draw", "obs", "times", "components"],
+                jnp.permute_dims(
                     holdout.obs_r.values,
                     (3, 1, 0, 2),
-                )[None, ...],
-                "r_lat": jnp.permute_dims(
+                )[None,...]
+                ),
+            "r_lat": (
+                ["chain", "draw", "obs", "times", "components"],
+                jnp.permute_dims(
                     holdout.latent_r.values,
                     (3, 1, 0, 2),
-                )[None, ...],
-            }
-        },
-        dims={
-            "r_lat": ["chain", "draw", "obs", "times", "components"],
-            "r": ["chain", "draw", "obs", "times", "components"],
+                )[None,...]
+                ),
         },
     )
+    post_data["observed_data"] = observed_data
 
     return post_data
 
@@ -329,7 +332,7 @@ def generate_synthetic_data(
 
 
 def predict(
-    idata: az.InferenceData,
+    idata: xarray.DataTree,
     T: jnp.ndarray,
     p_i: jnp.ndarray,
     num_samples: int = 25,

@@ -120,7 +120,7 @@ def KL_divergence(
     x_old: jnp.ndarray,
     y_old: jnp.ndarray,
     x_new: jnp.ndarray,
-    idata_old: az.InferenceData,
+    idata_old: xarray.DataTree,
     n_hyp_samples: int = 5,
     use_vi: bool = True,
 ):
@@ -293,7 +293,7 @@ def _single_kl_worker(args):
 
 def _candidate_kl_worker(
     args: tuple[
-        jnp.ndarray, jnp.ndarray, jnp.ndarray, az.InferenceData, int, int, bool
+        jnp.ndarray, jnp.ndarray, jnp.ndarray, xarray.DataTree, int, int, bool
     ],
 ):
     """Top-level worker for parallelizing over candidate proposals."""
@@ -313,7 +313,7 @@ def mp_KL_divergence(
     x_old: jnp.ndarray,
     y_old: jnp.ndarray,
     x_new: jnp.ndarray,
-    idata_old: az.InferenceData,
+    idata_old: xarray.DataTree,
     n_hyp_samples: int = 5,
     n_cores: int = 4,
     use_vi: bool = True,
