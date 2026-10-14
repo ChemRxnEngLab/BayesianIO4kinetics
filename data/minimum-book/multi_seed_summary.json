@@ -1,0 +1,24 @@
+{
+  "experiment_id": "minimum-book",
+  "base_seed": 42,
+  "n_seeds": 1,
+  "seeds_used": [
+    42
+  ],
+  "seed_paths": {
+    "42": "/home/hannes/Documents/PythonCode/BIBO/data/minimum-book/seed042"
+  },
+  "timestamp": "2026-10-06 13:33:38.598909",
+  "args": {
+    "n_outer": 512,
+    "n_inner": 4096,
+    "ntestpoints": 20,
+    "prior_samples": 16384,
+    "iterations": 32,
+    "optiterations": 30,
+    "trialsperiteration": 4,
+    "seed": 42,
+    "n_seeds": 1,
+    "datadir": "/home/hannes/Documents/PythonCode/BIBO/data"
+  }
+}

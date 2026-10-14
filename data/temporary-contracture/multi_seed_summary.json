@@ -1,0 +1,32 @@
+{
+  "experiment_id": "temporary-contracture",
+  "base_seed": 42,
+  "n_seeds": 5,
+  "seeds_used": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "seed_paths": {
+    "42": "/home/hannes/Documents/PythonCode/BIBO/data/temporary-contracture/seed042",
+    "43": "/home/hannes/Documents/PythonCode/BIBO/data/temporary-contracture/seed043",
+    "44": "/home/hannes/Documents/PythonCode/BIBO/data/temporary-contracture/seed044",
+    "45": "/home/hannes/Documents/PythonCode/BIBO/data/temporary-contracture/seed045",
+    "46": "/home/hannes/Documents/PythonCode/BIBO/data/temporary-contracture/seed046"
+  },
+  "timestamp": "2026-10-06 16:48:45.465684",
+  "args": {
+    "n_outer": 512,
+    "n_inner": 4096,
+    "prior_samples": 16384,
+    "iterations": 32,
+    "optiterations": 30,
+    "trialsperiteration": 4,
+    "seed": 44,
+    "n_seeds": 3,
+    "datadir": "/home/hannes/Documents/PythonCode/BIBO/data",
+    "exp_ID": null
+  }
+}

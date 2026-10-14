@@ -1,0 +1,32 @@
+{
+  "experiment_id": "square-guffaw",
+  "base_seed": 42,
+  "n_seeds": 5,
+  "seeds_used": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "seed_paths": {
+    "42": "/home/hannes/Documents/PythonCode/BIBO/data/square-guffaw/seed042",
+    "43": "/home/hannes/Documents/PythonCode/BIBO/data/square-guffaw/seed043",
+    "44": "/home/hannes/Documents/PythonCode/BIBO/data/square-guffaw/seed044",
+    "45": "/home/hannes/Documents/PythonCode/BIBO/data/square-guffaw/seed045",
+    "46": "/home/hannes/Documents/PythonCode/BIBO/data/square-guffaw/seed046"
+  },
+  "timestamp": "2026-10-05 20:34:32.414842",
+  "args": {
+    "n_outer": 512,
+    "n_inner": 4096,
+    "ntestpoints": 20,
+    "prior_samples": 16384,
+    "iterations": 32,
+    "optiterations": 30,
+    "trialsperiteration": 4,
+    "seed": 42,
+    "n_seeds": 5,
+    "datadir": "/home/hannes/Documents/PythonCode/BIBO/data"
+  }
+}

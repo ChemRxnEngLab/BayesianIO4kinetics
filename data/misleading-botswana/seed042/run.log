@@ -1,0 +1,434 @@
+======================================================================
+FIM D-OPTIMAL mbDOE  |  Experiment ID: misleading-botswana  |  Seed: 42
+  Iterations: 32, multi-starts: 16, initial design: factorial
+  Results: /home/hannes/Documents/PythonCode/BIBO/data/misleading-botswana/seed042
+======================================================================
+
+[  0] n=  8  logdet(FIM)=   25.557  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003053    0.000346      0.336
+         Ea_k   8.413e+04    7.75e+04       0.11
+         A_oh      0.5367         0.5      0.199
+        dH_oh   1.821e+04    2.24e+04       0.86
+         A_h2      0.4166        0.44      0.249
+        dH_h2      -311.6       -6200      0.801
+        A_mix      0.6738        0.88       0.78
+       dH_mix       -4062      -1e+04       1.75
+      next: T=600, p=9, c2h=4, c2m=981, c2w=1000, c2i=1
+      expected logdet(FIM) after next: 29.078
+
+[  1] n=  9  logdet(FIM)=   29.204  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003203    0.000346      0.181
+         Ea_k   8.315e+04    7.75e+04     0.0914
+         A_oh      0.5515         0.5      0.171
+        dH_oh   1.662e+04    2.24e+04      0.822
+         A_h2      0.4071        0.44       0.26
+        dH_h2       -1849       -6200      0.826
+        A_mix        0.76        0.88      0.205
+       dH_mix       -4470      -1e+04      0.894
+      next: T=450, p=9, c2h=4, c2m=1000, c2w=1000, c2i=1
+      expected logdet(FIM) after next: 31.398
+
+[  2] n= 10  logdet(FIM)=   31.268  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003869    0.000346      0.177
+         Ea_k   7.154e+04    7.75e+04        0.1
+         A_oh      0.6287         0.5      0.159
+        dH_oh        8564    2.24e+04      0.727
+         A_h2      0.4581        0.44      0.259
+        dH_h2       -9104       -6200      0.811
+        A_mix      0.9332        0.88      0.168
+       dH_mix   -1.71e+04      -1e+04      0.523
+      next: T=450, p=9, c2h=4, c2m=1000, c2w=0.5, c2i=1
+      expected logdet(FIM) after next: 32.819
+
+[  3] n= 11  logdet(FIM)=   30.986  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003238    0.000346       0.15
+         Ea_k    8.25e+04    7.75e+04     0.0529
+         A_oh      0.4405         0.5      0.153
+        dH_oh   3.045e+04    2.24e+04      0.676
+         A_h2      0.3723        0.44      0.261
+        dH_h2        3650       -6200      0.837
+        A_mix      0.8389        0.88      0.158
+       dH_mix  -1.055e+04      -1e+04      0.394
+      next: T=600, p=9, c2h=0.2, c2m=999.4, c2w=974.1, c2i=1
+      expected logdet(FIM) after next: 31.940
+
+[  4] n= 12  logdet(FIM)=   31.925  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003226    0.000346      0.138
+         Ea_k   8.242e+04    7.75e+04      0.051
+         A_oh      0.4397         0.5       0.15
+        dH_oh   3.041e+04    2.24e+04      0.673
+         A_h2      0.3684        0.44      0.201
+        dH_h2        3441       -6200       0.77
+        A_mix      0.8376        0.88      0.156
+       dH_mix  -1.058e+04      -1e+04      0.391
+      next: T=513.4, p=9, c2h=4, c2m=840.3, c2w=0.5, c2i=1
+      expected logdet(FIM) after next: 32.976
+
+[  5] n= 13  logdet(FIM)=   33.212  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003283    0.000346      0.137
+         Ea_k   8.184e+04    7.75e+04     0.0521
+         A_oh      0.4629         0.5      0.114
+        dH_oh   2.793e+04    2.24e+04      0.493
+         A_h2      0.3759        0.44      0.198
+        dH_h2        2147       -6200      0.727
+        A_mix      0.8516        0.88      0.153
+       dH_mix  -1.062e+04      -1e+04       0.39
+      next: T=450, p=9, c2h=0.2, c2m=910.7, c2w=1000, c2i=1
+      expected logdet(FIM) after next: 34.154
+
+[  6] n= 14  logdet(FIM)=   34.284  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003315    0.000346      0.135
+         Ea_k   8.118e+04    7.75e+04      0.049
+         A_oh      0.4658         0.5      0.113
+        dH_oh   2.743e+04    2.24e+04      0.487
+         A_h2      0.3883        0.44      0.181
+        dH_h2       166.9       -6200      0.534
+        A_mix      0.8539        0.88      0.152
+       dH_mix  -1.096e+04      -1e+04      0.381
+      next: T=600, p=9, c2h=4, c2m=995.8, c2w=0.5, c2i=0.9998
+      expected logdet(FIM) after next: 35.132
+
+[  7] n= 15  logdet(FIM)=   35.105  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003272    0.000346      0.131
+         Ea_k   8.078e+04    7.75e+04     0.0486
+         A_oh      0.4537         0.5     0.0993
+        dH_oh   2.634e+04    2.24e+04      0.443
+         A_h2       0.385        0.44       0.18
+        dH_h2      -205.2       -6200       0.53
+        A_mix      0.8429        0.88       0.15
+       dH_mix  -1.128e+04      -1e+04      0.379
+      next: T=450, p=3, c2h=4, c2m=0.5, c2w=1000, c2i=0.05
+      expected logdet(FIM) after next: 35.761
+
+[  8] n= 16  logdet(FIM)=   36.027  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003419    0.000346      0.128
+         Ea_k   7.753e+04    7.75e+04     0.0451
+         A_oh      0.4785         0.5      0.093
+        dH_oh   2.256e+04    2.24e+04      0.379
+         A_h2      0.4088        0.44      0.173
+        dH_h2       -3713       -6200      0.455
+        A_mix      0.8531        0.88       0.15
+       dH_mix  -1.325e+04      -1e+04      0.363
+      next: T=600, p=3, c2h=4, c2m=0.5002, c2w=1000, c2i=0.05
+      expected logdet(FIM) after next: 36.672
+
+[  9] n= 17  logdet(FIM)=   36.406  rank=8
+        param    estimate        true  sd(theta)
+           k0    0.000306    0.000346     0.0978
+         Ea_k   7.529e+04    7.75e+04     0.0411
+         A_oh      0.4473         0.5     0.0799
+        dH_oh   2.102e+04    2.24e+04      0.366
+         A_h2      0.3587        0.44      0.161
+        dH_h2       -6356       -6200      0.436
+        A_mix      0.7927        0.88      0.143
+       dH_mix  -1.473e+04      -1e+04       0.35
+      next: T=600, p=9, c2h=4, c2m=957.6, c2w=1000, c2i=1
+      expected logdet(FIM) after next: 37.046
+
+[ 10] n= 18  logdet(FIM)=   37.084  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003025    0.000346     0.0937
+         Ea_k   7.499e+04    7.75e+04     0.0406
+         A_oh      0.4485         0.5     0.0791
+        dH_oh   2.077e+04    2.24e+04       0.36
+         A_h2      0.3636        0.44      0.155
+        dH_h2       -6177       -6200      0.429
+        A_mix      0.7606        0.88      0.118
+       dH_mix  -1.557e+04      -1e+04      0.314
+      next: T=450, p=9, c2h=4, c2m=1000, c2w=975.3, c2i=1
+      expected logdet(FIM) after next: 37.597
+
+[ 11] n= 19  logdet(FIM)=   37.574  rank=8
+        param    estimate        true  sd(theta)
+           k0    0.000303    0.000346     0.0927
+         Ea_k   7.489e+04    7.75e+04     0.0393
+         A_oh      0.4483         0.5     0.0791
+        dH_oh   2.081e+04    2.24e+04       0.36
+         A_h2      0.3633        0.44      0.156
+        dH_h2       -6134       -6200       0.43
+        A_mix      0.7627        0.88      0.116
+       dH_mix  -1.572e+04      -1e+04      0.293
+      next: T=600, p=9, c2h=0.2, c2m=845.3, c2w=1000, c2i=1
+      expected logdet(FIM) after next: 38.038
+
+[ 12] n= 20  logdet(FIM)=   38.055  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003037    0.000346     0.0917
+         Ea_k   7.493e+04    7.75e+04     0.0391
+         A_oh      0.4487         0.5     0.0788
+        dH_oh   2.083e+04    2.24e+04      0.359
+         A_h2      0.3677        0.44      0.134
+        dH_h2       -5895       -6200        0.4
+        A_mix      0.7621        0.88      0.116
+       dH_mix  -1.574e+04      -1e+04      0.293
+      next: T=450, p=9, c2h=0.2, c2m=729.2, c2w=997.6, c2i=1
+      expected logdet(FIM) after next: 38.482
+
+[ 13] n= 21  logdet(FIM)=   38.522  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003047    0.000346     0.0914
+         Ea_k   7.472e+04    7.75e+04     0.0389
+         A_oh      0.4498         0.5     0.0787
+        dH_oh   2.066e+04    2.24e+04      0.359
+         A_h2      0.3718        0.44      0.131
+        dH_h2       -6566       -6200      0.363
+        A_mix      0.7628        0.88      0.116
+       dH_mix  -1.582e+04      -1e+04      0.293
+      next: T=492.1, p=9, c2h=4, c2m=1000, c2w=0.5, c2i=1
+      expected logdet(FIM) after next: 38.944
+
+[ 14] n= 22  logdet(FIM)=   38.942  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003046    0.000346     0.0912
+         Ea_k   7.472e+04    7.75e+04     0.0388
+         A_oh      0.4496         0.5     0.0738
+        dH_oh    2.07e+04    2.24e+04      0.323
+         A_h2      0.3717        0.44      0.131
+        dH_h2       -6557       -6200      0.362
+        A_mix      0.7627        0.88      0.116
+       dH_mix  -1.582e+04      -1e+04      0.293
+      next: T=450, p=3, c2h=4, c2m=0.5, c2w=934.4, c2i=0.05
+      expected logdet(FIM) after next: 39.337
+
+[ 15] n= 23  logdet(FIM)=   39.388  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003098    0.000346     0.0895
+         Ea_k   7.353e+04    7.75e+04     0.0362
+         A_oh      0.4572         0.5     0.0718
+        dH_oh   1.948e+04    2.24e+04      0.302
+         A_h2      0.3786        0.44      0.129
+        dH_h2       -7633       -6200      0.339
+        A_mix      0.7672        0.88      0.115
+       dH_mix  -1.654e+04      -1e+04      0.285
+      next: T=600, p=9, c2h=4, c2m=999.8, c2w=0.5, c2i=0.9996
+      expected logdet(FIM) after next: 39.836
+
+[ 16] n= 24  logdet(FIM)=   39.865  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003117    0.000346     0.0895
+         Ea_k   7.376e+04    7.75e+04     0.0361
+         A_oh      0.4699         0.5     0.0667
+        dH_oh   2.052e+04    2.24e+04       0.29
+         A_h2      0.3801        0.44      0.129
+        dH_h2       -7458       -6200      0.339
+        A_mix      0.7727        0.88      0.115
+       dH_mix  -1.636e+04      -1e+04      0.284
+      next: T=600, p=9, c2h=4, c2m=933, c2w=1000, c2i=1
+      expected logdet(FIM) after next: 40.249
+
+[ 17] n= 25  logdet(FIM)=   40.230  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003134    0.000346     0.0887
+         Ea_k    7.39e+04    7.75e+04     0.0358
+         A_oh      0.4692         0.5     0.0669
+        dH_oh   2.064e+04    2.24e+04       0.29
+         A_h2      0.3775        0.44      0.129
+        dH_h2       -7565       -6200       0.34
+        A_mix      0.7883        0.88      0.102
+       dH_mix  -1.594e+04      -1e+04      0.265
+      next: T=600, p=3, c2h=4, c2m=0.5002, c2w=1000, c2i=0.05
+      expected logdet(FIM) after next: 40.604
+
+[ 18] n= 26  logdet(FIM)=   40.651  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003202    0.000346     0.0775
+         Ea_k   7.433e+04    7.75e+04     0.0337
+         A_oh      0.4748         0.5     0.0621
+        dH_oh   2.092e+04    2.24e+04      0.284
+         A_h2       0.386        0.44      0.119
+        dH_h2       -7113       -6200      0.324
+        A_mix      0.8007        0.88     0.0968
+       dH_mix  -1.563e+04      -1e+04      0.256
+      next: T=450, p=9, c2h=4, c2m=881.7, c2w=986.3, c2i=1
+      expected logdet(FIM) after next: 40.984
+
+[ 19] n= 27  logdet(FIM)=   41.147  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003161    0.000346     0.0766
+         Ea_k   7.508e+04    7.75e+04     0.0319
+         A_oh       0.476         0.5     0.0615
+        dH_oh   2.074e+04    2.24e+04      0.276
+         A_h2       0.388        0.44      0.118
+        dH_h2       -7420       -6200      0.317
+        A_mix       0.785        0.88     0.0959
+       dH_mix  -1.445e+04      -1e+04      0.245
+      next: T=600, p=9, c2h=0.2, c2m=792, c2w=1000, c2i=1
+      expected logdet(FIM) after next: 41.457
+
+[ 20] n= 28  logdet(FIM)=   41.539  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003187    0.000346     0.0766
+         Ea_k   7.524e+04    7.75e+04     0.0319
+         A_oh      0.4778         0.5     0.0615
+        dH_oh   2.078e+04    2.24e+04      0.276
+         A_h2      0.4133        0.44      0.103
+        dH_h2       -6170       -6200      0.295
+        A_mix      0.7786        0.88      0.097
+       dH_mix  -1.462e+04      -1e+04      0.247
+      next: T=450, p=9, c2h=0.2, c2m=715.9, c2w=1000, c2i=1
+      expected logdet(FIM) after next: 41.830
+
+[ 21] n= 29  logdet(FIM)=   41.854  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003192    0.000346     0.0765
+         Ea_k   7.512e+04    7.75e+04     0.0318
+         A_oh      0.4783         0.5     0.0615
+        dH_oh   2.072e+04    2.24e+04      0.276
+         A_h2      0.4163        0.44      0.102
+        dH_h2       -6622       -6200      0.278
+        A_mix      0.7787        0.88     0.0971
+       dH_mix  -1.463e+04      -1e+04      0.247
+      next: T=450, p=3, c2h=4, c2m=0.5, c2w=1000, c2i=0.05
+      expected logdet(FIM) after next: 42.135
+
+[ 22] n= 30  logdet(FIM)=   42.111  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003145    0.000346     0.0751
+         Ea_k   7.535e+04    7.75e+04     0.0294
+         A_oh      0.4725         0.5     0.0606
+        dH_oh   2.079e+04    2.24e+04      0.267
+         A_h2      0.4116        0.44      0.101
+        dH_h2       -6503       -6200      0.269
+        A_mix      0.7725        0.88     0.0969
+       dH_mix  -1.454e+04      -1e+04      0.241
+      next: T=600, p=9, c2h=4, c2m=918.3, c2w=1000, c2i=1
+      expected logdet(FIM) after next: 42.388
+
+[ 23] n= 31  logdet(FIM)=   42.354  rank=8
+        param    estimate        true  sd(theta)
+           k0    0.000318    0.000346     0.0748
+         Ea_k   7.622e+04    7.75e+04     0.0288
+         A_oh      0.4714         0.5     0.0612
+        dH_oh   2.179e+04    2.24e+04      0.271
+         A_h2      0.4073        0.44      0.102
+        dH_h2       -6052       -6200      0.272
+        A_mix      0.7987        0.88     0.0881
+       dH_mix  -1.346e+04      -1e+04      0.228
+      next: T=600, p=9, c2h=4, c2m=667.7, c2w=0.5, c2i=1
+      expected logdet(FIM) after next: 42.660
+
+[ 24] n= 32  logdet(FIM)=   42.656  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003178    0.000346     0.0747
+         Ea_k    7.62e+04    7.75e+04     0.0288
+         A_oh      0.4696         0.5     0.0588
+        dH_oh   2.165e+04    2.24e+04      0.264
+         A_h2      0.4072        0.44      0.102
+        dH_h2       -6067       -6200      0.272
+        A_mix      0.7982        0.88      0.088
+       dH_mix  -1.348e+04      -1e+04      0.228
+      next: T=486.5, p=9, c2h=4, c2m=990.9, c2w=0.5, c2i=1
+      expected logdet(FIM) after next: 42.946
+
+[ 25] n= 33  logdet(FIM)=   42.951  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003179    0.000346     0.0747
+         Ea_k   7.618e+04    7.75e+04     0.0288
+         A_oh      0.4703         0.5     0.0562
+        dH_oh   2.155e+04    2.24e+04      0.242
+         A_h2      0.4073        0.44      0.102
+        dH_h2       -6079       -6200      0.271
+        A_mix      0.7984        0.88      0.088
+       dH_mix  -1.349e+04      -1e+04      0.228
+      next: T=600, p=3, c2h=4, c2m=641.9, c2w=1000, c2i=0.05
+      expected logdet(FIM) after next: 43.212
+
+[ 26] n= 34  logdet(FIM)=   43.296  rank=8
+        param    estimate        true  sd(theta)
+           k0    0.000332    0.000346     0.0686
+         Ea_k   7.705e+04    7.75e+04     0.0274
+         A_oh      0.4819         0.5     0.0535
+        dH_oh   2.209e+04    2.24e+04      0.239
+         A_h2      0.4244        0.44     0.0954
+        dH_h2       -5253       -6200      0.262
+        A_mix       0.824        0.88     0.0846
+       dH_mix  -1.286e+04      -1e+04      0.222
+      next: T=450, p=9, c2h=4, c2m=867.3, c2w=1000, c2i=1
+      expected logdet(FIM) after next: 43.546
+
+[ 27] n= 35  logdet(FIM)=   43.641  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003296    0.000346     0.0681
+         Ea_k   7.749e+04    7.75e+04     0.0265
+         A_oh      0.4828         0.5     0.0531
+        dH_oh   2.196e+04    2.24e+04      0.235
+         A_h2      0.4258        0.44     0.0951
+        dH_h2       -5448       -6200      0.258
+        A_mix       0.814        0.88      0.084
+       dH_mix  -1.213e+04      -1e+04      0.215
+      next: T=600, p=9, c2h=0.2, c2m=677.7, c2w=1000, c2i=1
+      expected logdet(FIM) after next: 43.875
+
+[ 28] n= 36  logdet(FIM)=   43.848  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003288    0.000346     0.0679
+         Ea_k   7.745e+04    7.75e+04     0.0265
+         A_oh      0.4823         0.5     0.0531
+        dH_oh   2.195e+04    2.24e+04      0.235
+         A_h2      0.4169        0.44     0.0902
+        dH_h2       -5868       -6200      0.251
+        A_mix      0.8166        0.88     0.0835
+       dH_mix  -1.206e+04      -1e+04      0.214
+      next: T=482.5, p=9, c2h=4, c2m=929.7, c2w=0.5, c2i=1
+      expected logdet(FIM) after next: 44.072
+
+[ 29] n= 37  logdet(FIM)=   44.124  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003297    0.000346     0.0679
+         Ea_k    7.73e+04    7.75e+04     0.0266
+         A_oh      0.4894         0.5     0.0512
+        dH_oh   2.102e+04    2.24e+04      0.217
+         A_h2      0.4174        0.44     0.0902
+        dH_h2       -5975       -6200      0.251
+        A_mix      0.8188        0.88     0.0834
+       dH_mix  -1.215e+04      -1e+04      0.214
+      next: T=450, p=9, c2h=0.2, c2m=598.1, c2w=1000, c2i=1
+      expected logdet(FIM) after next: 44.347
+
+[ 30] n= 38  logdet(FIM)=   44.362  rank=8
+        param    estimate        true  sd(theta)
+           k0     0.00033    0.000346     0.0679
+         Ea_k   7.726e+04    7.75e+04     0.0266
+         A_oh      0.4895         0.5     0.0512
+        dH_oh     2.1e+04    2.24e+04      0.217
+         A_h2      0.4192        0.44     0.0894
+        dH_h2       -6238       -6200       0.24
+        A_mix      0.8187        0.88     0.0834
+       dH_mix  -1.215e+04      -1e+04      0.215
+      next: T=600, p=9, c2h=4, c2m=909.5, c2w=1000, c2i=1
+      expected logdet(FIM) after next: 44.578
+
+[ 31] n= 39  logdet(FIM)=   44.475  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003406    0.000346     0.0688
+         Ea_k   7.798e+04    7.75e+04     0.0264
+         A_oh      0.4878         0.5     0.0523
+        dH_oh   2.155e+04    2.24e+04       0.22
+         A_h2       0.406        0.44     0.0938
+        dH_h2       -6800       -6200      0.247
+        A_mix      0.9006        0.88     0.0757
+       dH_mix   -1.02e+04      -1e+04      0.203
+      next: T=600, p=9, c2h=4, c2m=552.1, c2w=0.5, c2i=1
+      expected logdet(FIM) after next: 44.708
+
+[ 32] n= 40  logdet(FIM)=   44.726  rank=8
+        param    estimate        true  sd(theta)
+           k0   0.0003415    0.000346     0.0688
+         Ea_k   7.807e+04    7.75e+04     0.0264
+         A_oh      0.4966         0.5     0.0505
+        dH_oh   2.215e+04    2.24e+04      0.216
+         A_h2      0.4065        0.44     0.0938
+        dH_h2       -6746       -6200      0.247
+        A_mix       0.903        0.88     0.0757
+       dH_mix  -1.013e+04      -1e+04      0.203
+
+Done. Experiment ID: misleading-botswana, results in /home/hannes/Documents/PythonCode/BIBO/data/misleading-botswana/seed042

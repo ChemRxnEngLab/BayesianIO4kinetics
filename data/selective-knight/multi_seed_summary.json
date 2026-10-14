@@ -1,0 +1,32 @@
+{
+  "experiment_id": "selective-knight",
+  "base_seed": 42,
+  "n_seeds": 5,
+  "seeds_used": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "seed_paths": {
+    "42": "/home/hannes/Documents/PythonCode/BIBO/data/selective-knight/seed042",
+    "43": "/home/hannes/Documents/PythonCode/BIBO/data/selective-knight/seed043",
+    "44": "/home/hannes/Documents/PythonCode/BIBO/data/selective-knight/seed044",
+    "45": "/home/hannes/Documents/PythonCode/BIBO/data/selective-knight/seed045",
+    "46": "/home/hannes/Documents/PythonCode/BIBO/data/selective-knight/seed046"
+  },
+  "timestamp": "2026-10-05 14:48:36.056792",
+  "args": {
+    "n_outer": 512,
+    "n_inner": 4096,
+    "prior_samples": 16384,
+    "iterations": 32,
+    "optiterations": 30,
+    "trialsperiteration": 4,
+    "seed": 43,
+    "n_seeds": 4,
+    "datadir": "/home/hannes/Documents/PythonCode/BIBO/data"
+  },
+  "notes": "Initial test run with 4 seeds. Seed 042 appended by symlink."
+}

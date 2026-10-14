@@ -1,0 +1,32 @@
+{
+  "experiment_id": "primary-rehearsal",
+  "base_seed": 42,
+  "n_seeds": 5,
+  "seeds_used": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "seed_paths": {
+    "42": "/home/hannes/Documents/PythonCode/BIBO/data/primary-rehearsal/seed042",
+    "43": "/home/hannes/Documents/PythonCode/BIBO/data/primary-rehearsal/seed043",
+    "44": "/home/hannes/Documents/PythonCode/BIBO/data/primary-rehearsal/seed044",
+    "45": "/home/hannes/Documents/PythonCode/BIBO/data/primary-rehearsal/seed045",
+    "46": "/home/hannes/Documents/PythonCode/BIBO/data/primary-rehearsal/seed046"
+  },
+  "timestamp": "2026-10-06 20:02:23.386859",
+  "args": {
+    "n_outer": 512,
+    "n_inner": 4096,
+    "ntestpoints": 20,
+    "prior_samples": 16384,
+    "iterations": 32,
+    "optiterations": 30,
+    "trialsperiteration": 4,
+    "seed": 42,
+    "n_seeds": 5,
+    "datadir": "/home/hannes/Documents/PythonCode/BIBO/data"
+  }
+}
