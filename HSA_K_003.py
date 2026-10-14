@@ -64,7 +64,7 @@ import jax
 import jax.numpy as jnp
 
 
-from HSA_Mo_B_011_numpyro import (
+from HSA_Mo_B_012_numpyro import (
     run_inference,
     sample_prior,
     generate_synthetic_data,
@@ -151,6 +151,12 @@ parser.add_argument(
     type=Path,
     default=Path.cwd() / "data",
     help="Base directory for run artifacts",
+)
+parser.add_argument(
+    "--exp_ID",
+    type=str,
+    default=None,
+    help="Optional experiment ID to override the auto-generated one",
 )
 
 
@@ -666,7 +672,10 @@ def main(args):
     n_seeds = args.n_seeds
 
     global EXP_ID
-    EXP_ID = namer.generate()
+    if args.exp_ID is not None:
+        EXP_ID = args.exp_ID
+    else:
+        EXP_ID = namer.generate()
 
     base_save_path = args.datadir / f"{EXP_ID}"
     base_save_path.mkdir(parents=True, exist_ok=True)

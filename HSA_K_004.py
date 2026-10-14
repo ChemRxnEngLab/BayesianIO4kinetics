@@ -81,7 +81,7 @@ import jax
 import jax.numpy as jnp
 
 
-from HSA_Mo_B_011_numpyro import (
+from HSA_Mo_B_012_numpyro import (
     run_inference,
     sample_prior,
     generate_synthetic_data,
@@ -697,9 +697,7 @@ def run_single_workflow(args, seed: int, exp_id: str, base_save_path: Path):
     n_test_points = args.ntestpoints
 
     logger.info("=" * 70)
-    logger.info(
-        f"BAYESIAN OED - PREDICTIVE EIG SEQUENTIAL LOOP (Seed: {seed})"
-    )
+    logger.info(f"BAYESIAN OED - PREDICTIVE EIG SEQUENTIAL LOOP (Seed: {seed})")
     logger.info("=" * 70)
     logger.info(f"Configuration:")
     logger.info(f"  Outer MC draws: {n_outer}")
