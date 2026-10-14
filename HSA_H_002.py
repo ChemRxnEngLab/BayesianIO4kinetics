@@ -792,7 +792,7 @@ def run_single_workflow(args, seed: int, exp_id: str, base_save_path: Path):
     logger.info(f"{'='*70}\n")
 
     # Drop large per-seed references before the next seed starts.
-    del idata, prior_idata, proposals, r_obs, trials_sum, all_proposals
+    del idata, prior_idata, proposals, r_obs, trials_sum
     gc.collect()
     clear_caches = getattr(jax, "clear_caches", None)
     if callable(clear_caches):
