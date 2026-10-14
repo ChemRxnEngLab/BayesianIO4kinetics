@@ -1,0 +1,38 @@
+[project]
+name = "bibo"
+version = "1.1.0"
+description = "Bayesian inference and Bayesian optimal experimental design for reaction kinetics"
+requires-python = ">=3.12,<3.13"
+license = "MIT"
+dependencies = [
+    "arviz==1.0.0",
+    "ax-platform==1.2.3",
+    "diffrax==0.7.2",
+    "h5netcdf==1.8.1",
+    "h5py==3.15.1",
+    "jax==0.9.0.1",
+    "matplotlib==3.10.9",
+    "numpy==2.5.4",
+    "numpyro==0.20.0",
+    "pandas==3.0.6",
+    "scipy==1.18.1",
+    "tqdm==4.70.1",
+    "unique-namer==1.6.2",
+    "xarray==2026.9.0",
+]
+
+[project.optional-dependencies]
+cuda = ["jax[cuda12]==0.9.0.1"]
+
+[dependency-groups]
+notebooks = [
+    "iciw-plots==1.0.43",
+    "ipykernel==7.4.0",
+    "ipywidgets==8.1.9",
+    "notebook==7.5.4",
+]
+dev = ["mypy==1.20.2"]
+
+[tool.uv]
+package = false
+default-groups = ["notebooks"]

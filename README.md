@@ -1,6 +1,24 @@
 # Overview for repo
 
-This repository assumes you got a working linux setup with the requirements listed in requirements.txt installed.
+This repository assumes a Linux setup with Python 3.12.
+
+## Environment
+
+The environment is managed with [uv](https://docs.astral.sh/uv/). `pyproject.toml` lists the direct dependencies, `uv.lock` pins the full environment.
+
+```bash
+uv sync                    # runtime + notebook dependencies
+uv sync --extra cuda       # additionally the CUDA 12 build of jax
+uv run python HSA_K_003.py --help
+```
+
+`requirements.txt` is generated from `uv.lock` for plain-pip setups (e.g. SLURM clusters):
+
+```bash
+uv export --format requirements-txt --no-hashes --no-dev --no-emit-project -o requirements.txt
+```
+
+Regenerate it whenever `uv.lock` changes.
 
 ## available scripts
 
@@ -32,3 +50,9 @@ NestPools | Utility for running recursively parallelized (nested) pools on linux
 ## data
 Data is both the inference data after each run (no need to run the code yourself) and the DOE information.
 Additionally, the test data is in the folder, named to the same scheme as the files above.
+
+Traces (`*.nc`) are stored with Git LFS (`git lfs install` before cloning). `*.nc` is git-ignored, so new runs are committed on purpose with `git add -f data/<run>/`.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
