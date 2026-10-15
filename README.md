@@ -69,10 +69,15 @@ GTMo_C_004 | Deactivation Modeling Ground truth Mo4 |
 NestPools | Utility for running recursively parallelized (nested) pools on linux machines|
 
 ## data
-Data is both the inference data after each run (no need to run the code yourself) and the DOE information.
-Additionally, the test data is in the folder, named to the same scheme as the files above.
+Each run writes to `data/<run>/`: the DOE information and run metadata (`*.json`) are tracked in git.
+The synthetic test data `data/test_HSA_Da_<x>_<nnn>.nc` is tracked as well.
 
-Traces (`*.nc`) are stored with Git LFS (`git lfs install` before cloning). `*.nc` is git-ignored, so new runs are committed on purpose with `git add -f data/<run>/`.
+The inference traces (`data/<run>/**/*.nc`, about 22 GB) are **not** part of the repository: they are git-ignored, kept locally and will be published separately (e.g. on Zenodo).
+`data/traces_manifest.csv` lists every trace with size and SHA-256; check a local or downloaded copy with
+
+```bash
+tail -n +2 data/traces_manifest.csv | awk -F, '{print $3"  "$1}' | sha256sum -c --quiet
+```
 
 ## License
 

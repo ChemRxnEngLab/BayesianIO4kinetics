@@ -3,6 +3,7 @@ __pycache__
 .mypy_cache
 .ipynb_checkpoints/
 *.nc
+!data/test_HSA_Da_*.nc
 .venv
 archive
 *.err
