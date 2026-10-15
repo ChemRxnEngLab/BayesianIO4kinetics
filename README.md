@@ -81,7 +81,7 @@ NestPools | Utility for running recursively parallelized (nested) pools on linux
 Each run writes to `data/<run>/`: the DOE information and run metadata (`*.json`) are tracked in git.
 The synthetic test data `data/test_HSA_Da_<x>_<nnn>.nc` is tracked as well.
 
-The inference traces (`data/<run>/**/*.nc`, about 22 GB) are **not** part of the repository: they are git-ignored, kept locally and will be published separately (e.g. on Zenodo).
+The inference traces (`data/<run>/**/*.nc`, about 22 GB) are **not** part of the repository: they are git-ignored, kept locally and published here: https://doi.org/10.5281/zenodo.23394839.
 `data/traces_manifest.csv` lists every trace with size and SHA-256; check a local or downloaded copy with
 
 ```bash
