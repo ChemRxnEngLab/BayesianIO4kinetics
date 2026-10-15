@@ -43,13 +43,22 @@ Older files used a `_numpyro` suffix and a `Cam_` infix (e.g. `HSA_Cam_B_042_num
 ## available scripts
 
 The jupyter notebooks are for visualization while the .py files are for running the actual code. Can be run on SLURM Clusters for better parallelization.
+All reported files are the ones used for preparing the results in the paper.
+Older experiments remain.
 
 |Script | Description | Author | Data source |
 |--|--|--|--|
-|B_036 | Kinetic parameter fitting | Koschany DOE | data/chivalrous-infographic |
-|B_039 | Kinetic parameter fitting | paramEKLD bDOE | data/agitated-health |
-|B_042 | Kinetic parameter fitting | predEKLD bDOE | data/eternal-rock |
-|B_042_Overview | Kinetic parameter fitting | all DOEs | all data s.a. |
+|H_001 | Kinetic parameter fitting | Koschany DOE | data/verdant-stack |
+|H_001 | Kinetic parameter fitting | Koschany DOE | data/verdant-stack |
+|L_007 | Kinetic parameter fitting | LHS32 DOE | data/isolated-question |
+|L_008 | Kinetic parameter fitting | LHS64 DOE | data/strong-cartwheel |
+|K_001 | Kinetic parameter fitting | paramEKLD bDOE | data/selective-knight |
+|K_002 | Kinetic parameter fitting | predEKLD bDOE | data/square-guffaw |
+|K_003 | Kinetic parameter fitting (informative priors) | paramEKLD bDOE | data/temporary-contracture |
+|K_004 | Kinetic parameter fitting (informative priors) | predEKLD bDOE | data/primary-rehearsal |
+|HSA_K_Overview | Kinetic parameter fitting | all DOEs | all data s.a. |
+|HSA_K_Overview_informed | Kinetic parameter fitting | all DOEs | all data s.a. |
+|L_002 | Kinetic parameter fitting | mbDOE | XXX |
 |D_007 | Deactivation Modeling | predEMD bDOE | data/icky-link |
 
 ## lib files
