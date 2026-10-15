@@ -1,9 +1,9 @@
 """
-Bayesian Optimal Experimental Design using KL Divergence (Numpyro Version)
+Bayesian Optimal Experimental Design using KL Divergence
 
 This module implements Bayesian optimal experimental design for kinetic parameter
 estimation using KL divergence as the utility function. Refactored to work with
-Pyro probabilistic programming framework (PyTorch backend).
+NumPyro probabilistic programming framework (JAX backend).
 
 Key Features:
 - KL divergence computation between posterior distributions

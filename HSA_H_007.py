@@ -1,5 +1,5 @@
 """
-LHS experimental plan (Numpyro Version) - Multi-Seed Support
+LHS experimental plan - Multi-Seed Support
 
 This module implements the original Koschany et al. experimental design with support
 for running multiple workflows with different random seeds.

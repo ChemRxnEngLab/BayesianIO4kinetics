@@ -165,10 +165,6 @@ def run_inference(
     return idata
 
 
-# Note: NumPyro SVI implementation differs from Pyro
-# For variational inference, use numpyro.infer.SVI with custom guides
-
-
 def sample_prior(num_samples: int = 1000) -> xarray.DataTree:
     """
     Sample from the prior distribution.

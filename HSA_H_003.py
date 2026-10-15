@@ -1,5 +1,5 @@
 """
-Bayesian Optimal Experimental Design using KL Divergence (Numpyro Version) - Multi-Seed Support
+Bayesian Optimal Experimental Design using KL Divergence - Multi-Seed Support
 
 This module implements Bayesian optimal experimental design for kinetic parameter
 estimation using KL divergence as the utility function with support for multiple

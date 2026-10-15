@@ -332,11 +332,6 @@ def run_inference(
     return idata
 
 
-# Note: NumPyro does not have built-in SVI like Pyro
-# This function is removed as it's not directly translatable to NumPyro
-# For variational inference in NumPyro, use numpyro.infer.SVI with custom guides
-
-
 def sample_prior(num_samples: int = 1000) -> xarray.DataTree:
     """
     Sample from the prior distribution.

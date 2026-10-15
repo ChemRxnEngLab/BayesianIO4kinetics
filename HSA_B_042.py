@@ -1,5 +1,5 @@
 """
-Bayesian Optimal Experimental Design using KL Divergence (Numpyro Version)
+Bayesian Optimal Experimental Design using KL Divergence
 
 This module implements Bayesian optimal experimental design for kinetic parameter
 estimation using KL divergence as the utility function. Refactored to work with
@@ -330,7 +330,7 @@ def generate_test_grid(
         c2i_range: C2H6 inlet concentration range
 
     Returns:
-        torch.Tensor of shape (n_points, 5) with test conditions
+        jnp.ndarray of shape (n_points, 5) with test conditions
     """
     from scipy.stats import qmc
 

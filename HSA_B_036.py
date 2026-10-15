@@ -1,5 +1,5 @@
 """
-Koshany experimental plan (Numpyro Version)
+Koshany experimental plan
 
 This module implements the original Koschany et al. experimental design.
 
