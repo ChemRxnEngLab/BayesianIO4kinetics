@@ -24,7 +24,7 @@ module load devel/python/3.12.11
 
 unset PIP_TARGET
 
-source ./numpyroenv/bin/activate
+source ./.venv/bin/activate
 # export PYTHONPATH="${PYTHONPATH}:./lib"
 
 python3 HSA_G_005.py

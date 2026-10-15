@@ -20,6 +20,26 @@ uv export --format requirements-txt --no-hashes --no-dev --no-emit-project -o re
 
 Regenerate it whenever `uv.lock` changes.
 
+The `*.slurm` jobs activate `./.venv`. Create it once on the cluster, with uv or with pip:
+
+```bash
+module load devel/python/3.12.11
+uv sync --no-default-groups                  # or:
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+```
+
+## Naming scheme
+
+|Pattern | Content |
+|--|--|
+|`HSA_<campaign>_<nnn>.py` / `.ipynb` / `.slurm` | experiment script, its evaluation notebook and cluster job (e.g. `HSA_B_042`, `HSA_K_003`) |
+|`HSA_<campaign>_Overview*.ipynb` | comparison of all runs of a campaign |
+|`HSA_Mo_<x>_<nnn>.py` | Bayesian models |
+|`HSA_GTMo_<x>_<nnn>.py` | ground-truth models for synthetic data |
+|`data/HSA_Da_<x>_<nnn>.ipynb` | generation of the test data `data/test_HSA_Da_<x>_<nnn>.nc` |
+
+Older files used a `_numpyro` suffix and a `Cam_` infix (e.g. `HSA_Cam_B_042_numpyro.py` is now `HSA_B_042.py`). The run metadata in `data/<run>/experiment_summary_*.json` still records the original file names.
+
 ## available scripts
 
 The jupyter notebooks are for visualization while the .py files are for running the actual code. Can be run on SLURM Clusters for better parallelization.
@@ -37,6 +57,7 @@ The jupyter notebooks are for visualization while the .py files are for running 
 |File | Description |
 |--|--|
 Mo_B_011 | Kinetic parameter fitting |
+Mo_B_012 | Kinetic parameter fitting, informative priors |
 Mo_D_001 | Deactivation Modeling Mo1|
 Mo_D_002 | Deactivation Modeling Mo2|
 Mo_D_003 | Deactivation Modeling Mo3|

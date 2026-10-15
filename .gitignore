@@ -3,7 +3,6 @@ __pycache__
 .mypy_cache
 .ipynb_checkpoints/
 *.nc
-numpyroenv
 .venv
 archive
 *.err

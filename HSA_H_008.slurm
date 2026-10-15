@@ -24,7 +24,7 @@ module load devel/python/3.12.11
 
 unset PIP_TARGET
 
-source ./numpyroenv/bin/activate
+source ./.venv/bin/activate
 # export PYTHONPATH="${PYTHONPATH}:./lib"
 
 python3 HSA_H_007.py --n-seeds 5 --seed 42 --iterations 64
