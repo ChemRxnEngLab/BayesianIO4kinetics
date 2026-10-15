@@ -25,7 +25,7 @@ import jax.numpy as jnp
 from NestPools import NestablePool
 
 
-from HSA_Mo_B_011_numpyro import (
+from HSA_Mo_B_011 import (
     run_inference,
     predict,
     sample_prior,

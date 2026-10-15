@@ -3,7 +3,7 @@ Langmuir-Hinshelwood-Hougen-Watson (LHHW) Kinetics Model with Deactivation
 
 NumPyro
 
-Imports from GTMo_C_001
+Imports from GTMo_C_003
 
 """
 
@@ -20,7 +20,7 @@ import arviz as az
 import xarray
 import diffrax as dfx
 
-from HSA_GTMo_C_001_numpyro import (
+from HSA_GTMo_C_004 import (
     kinetics_model,
     TRUE_PARAMS,
     calculate_partial_pressures,
@@ -339,7 +339,7 @@ def predict(
     key: str = "posterior",
     w_noise: bool = False,
     seed=None,
-) -> jnp.ndarray:
+) -> np.ndarray:
     """
     Generate posterior predictions for given conditions.
 

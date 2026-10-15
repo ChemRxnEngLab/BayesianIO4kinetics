@@ -46,7 +46,7 @@ import jax.numpy as jnp
 from NestPools import NestablePool
 
 # informative priors
-from HSA_Mo_B_012_numpyro import (
+from HSA_Mo_B_012 import (
     run_inference,
     predict,
     sample_prior,

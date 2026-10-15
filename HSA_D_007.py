@@ -19,20 +19,20 @@ numpyro.set_host_device_count(8)
 import jax
 import jax.numpy as jnp
 
-from HSA_GTMo_C_004_numpyro import (
+from HSA_GTMo_C_004 import (
     generate_synthetic_data,
     calculate_partial_pressures,
     TRUE_PARAMS,
 )
 
-from HSA_Mo_D_001_numpyro import run_inference as run_inference_Mo1
-from HSA_Mo_D_001_numpyro import predict as predict_Mo1
-from HSA_Mo_D_002_numpyro import run_inference as run_inference_Mo2
-from HSA_Mo_D_002_numpyro import predict as predict_Mo2
-from HSA_Mo_D_003_numpyro import run_inference as run_inference_Mo3
-from HSA_Mo_D_003_numpyro import predict as predict_Mo3
-from HSA_Mo_D_004_numpyro import run_inference as run_inference_Mo4
-from HSA_Mo_D_004_numpyro import predict as predict_Mo4
+from HSA_Mo_D_001 import run_inference as run_inference_Mo1
+from HSA_Mo_D_001 import predict as predict_Mo1
+from HSA_Mo_D_002 import run_inference as run_inference_Mo2
+from HSA_Mo_D_002 import predict as predict_Mo2
+from HSA_Mo_D_003 import run_inference as run_inference_Mo3
+from HSA_Mo_D_003 import predict as predict_Mo3
+from HSA_Mo_D_004 import run_inference as run_inference_Mo4
+from HSA_Mo_D_004 import predict as predict_Mo4
 
 
 parser = argparse.ArgumentParser()

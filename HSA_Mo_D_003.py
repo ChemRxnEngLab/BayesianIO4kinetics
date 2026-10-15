@@ -3,7 +3,7 @@ Langmuir-Hinshelwood-Hougen-Watson (LHHW) Kinetics Model with Deactivation
 
 NumPyro
 
-Imports from GTMo_C_002
+Imports from GTMo_C_003
 
 """
 
@@ -20,7 +20,7 @@ import arviz as az
 import xarray
 import diffrax as dfx
 
-from HSA_GTMo_C_002_numpyro import (
+from HSA_GTMo_C_003 import (
     kinetics_model,
     TRUE_PARAMS,
     calculate_partial_pressures,
@@ -62,7 +62,7 @@ def bayesian_model(
     t_k_deact = jnp.expand_dims(numpyro.sample("t_k_deact", dist.Normal(0, 1)), 0)
     t_Ea_deact = jnp.expand_dims(numpyro.sample("t_Ea_deact", dist.Normal(0, 1)), 0)
     t_n_deact = jnp.expand_dims(numpyro.sample("t_n_deact", dist.Uniform(0, 1)), 0)
-    t_n_deact_r = jnp.expand_dims(numpyro.sample("t_n_deact_r", dist.Uniform(0, 1)), 0)
+    t_n_deact_p = jnp.expand_dims(numpyro.sample("t_n_deact_p", dist.Uniform(0, 1)), 0)
 
     # Transform to original space
     k0 = numpyro.deterministic("k0", 1e-4 * jnp.exp(t_k0))
@@ -70,7 +70,7 @@ def bayesian_model(
     k_deact = numpyro.deterministic("k_deact", 1e-5 * jnp.exp(t_k_deact))
     Ea_deact = numpyro.deterministic("Ea_deact", 50e3 * jnp.exp(t_Ea_deact))
     n_deact = numpyro.deterministic("n_deact", (7.0 - 3.0) * t_n_deact + 3.0)
-    n_deact_r = numpyro.deterministic("n_deact_r", (3.0 - 0.5) * t_n_deact_r + 0.5)
+    n_deact_p = numpyro.deterministic("n_deact_p", (3.0 - 1.0) * t_n_deact_p + 1.0)
 
     # Homoscedastic observation noise
     sigma_r = jnp.expand_dims(numpyro.sample("sigma_r", dist.HalfNormal(0.01)), 0)
@@ -83,7 +83,7 @@ def bayesian_model(
         r_obs_proc = None
 
     # Compute predicted reaction rates
-    r_pred = kinetics_model(p_i, T, k0, Ea_k, k_deact, Ea_deact, n_deact, n_deact_r)
+    r_pred = kinetics_model(p_i, T, k0, Ea_k, k_deact, Ea_deact, n_deact, n_deact_p)
 
     # Reshape predictions for likelihood
     r_pred = jnp.permute_dims(r_pred, (1, 3, 0, 2))
@@ -364,7 +364,7 @@ def predict(
     k_deact = jnp.array(draws["k_deact"].values.flatten())
     Ea_deact = jnp.array(draws["Ea_deact"].values.flatten())
     n_deact = jnp.array(draws["n_deact"].values.flatten())
-    n_deact_r = jnp.array(draws["n_deact_r"].values.flatten())
+    n_deact_p = jnp.array(draws["n_deact_p"].values.flatten())
     sigma_r = jnp.array(draws["sigma_r"].values.flatten())
 
     # Reshape for broadcasting with kinetics model
@@ -374,7 +374,7 @@ def predict(
         "k_deact": k_deact.reshape(1, -1),
         "Ea_deact": Ea_deact.reshape(1, -1),
         "n_deact": n_deact.reshape(1, -1),
-        "n_deact_r": n_deact_r.reshape(1, -1),
+        "n_deact_p": n_deact_p.reshape(1, -1),
     }
 
     # Generate predictions

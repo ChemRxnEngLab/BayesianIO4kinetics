@@ -64,7 +64,7 @@ import jax
 import jax.numpy as jnp
 
 
-from HSA_Mo_B_012_numpyro import (
+from HSA_Mo_B_012 import (
     run_inference,
     sample_prior,
     generate_synthetic_data,

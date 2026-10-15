@@ -10,7 +10,7 @@
 # Maximum run time of job
 #SBATCH --time=12:00:00
 # Give job a reasonable name
-#SBATCH --job-name=HSA_Cam_B_036_numpyro
+#SBATCH --job-name=HSA_B_036
 # File name for standard output (%j will be replaced by job id)
 #SBATCH --output=%x-%j.out
 # File name for error output
@@ -27,4 +27,4 @@ unset PIP_TARGET
 source ./numpyroenv/bin/activate
 # export PYTHONPATH="${PYTHONPATH}:./lib"
 
-python3 HSA_Cam_B_036_numpyro.py
+python3 HSA_B_036.py
